@@ -4,6 +4,7 @@ from rest_framework.response import Response
 
 from apps.ai_gateway.services import detect_intent, detect_sentiment, find_best_faq
 from apps.businesses.models import Business
+from apps.conversations.realtime import publish_inbox_event
 from .models import Conversation, InternalNote
 
 
@@ -71,6 +72,10 @@ def assign_agent(request, conversation_id):
         return Response({'detail': 'for now only self-assignment is allowed'}, status=status.HTTP_400_BAD_REQUEST)
     conversation.assigned_agent = request.user
     conversation.save(update_fields=['assigned_agent', 'updated_at'])
+    publish_inbox_event(
+        business.id,
+        {'type': 'conversation_assigned', 'conversation_id': conversation.id, 'assigned_agent_id': conversation.assigned_agent_id},
+    )
     return Response({'id': conversation.id, 'assigned_agent_id': conversation.assigned_agent_id})
 
 
@@ -96,6 +101,10 @@ def internal_notes(request, conversation_id):
     if not text:
         return Response({'detail': 'text is required'}, status=status.HTTP_400_BAD_REQUEST)
     note = InternalNote.objects.create(conversation=conversation, author=request.user, text=text)
+    publish_inbox_event(
+        business.id,
+        {'type': 'internal_note_created', 'conversation_id': conversation.id, 'note_id': note.id},
+    )
     return Response({'id': note.id, 'author_id': note.author_id, 'text': note.text, 'created_at': note.created_at}, status=201)
 
 

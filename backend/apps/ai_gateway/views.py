@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from apps.businesses.models import Business
 from apps.conversations.models import Conversation, Message
+from apps.conversations.realtime import publish_inbox_event
 from apps.tickets.models import Ticket
 from .models import AIInteractionLog
 from .services import (
@@ -73,6 +74,20 @@ def website_chat(request):
         escalated=conversation.needs_human,
         escalation_reason=escalation_reason,
         metadata={'match_method': match.method, 'faq_id': match.faq.id if match.faq else None},
+    )
+
+    publish_inbox_event(
+        business.id,
+        {
+            'type': 'conversation_updated',
+            'conversation_id': conversation.id,
+            'visitor_id': conversation.visitor_id,
+            'needs_human': conversation.needs_human,
+            'reply': reply,
+            'intent': intent,
+            'sentiment': sentiment,
+            'confidence': confidence,
+        },
     )
 
     return Response(
