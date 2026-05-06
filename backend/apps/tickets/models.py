@@ -1,10 +1,13 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class Ticket(models.Model):
     STATUS_CHOICES = (
         ('open', 'Open'),
         ('in_progress', 'In Progress'),
+        ('waiting_customer', 'Waiting Customer'),
+        ('resolved', 'Resolved'),
         ('closed', 'Closed'),
     )
 
@@ -13,4 +16,5 @@ class Ticket(models.Model):
     subject = models.CharField(max_length=255)
     details = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    assigned_agent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_tickets')
     created_at = models.DateTimeField(auto_now_add=True)
