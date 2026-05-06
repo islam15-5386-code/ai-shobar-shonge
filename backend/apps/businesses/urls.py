@@ -1,7 +1,7 @@
 from django.urls import path
 
-from .views import health
+from .views import business_setup
 
 urlpatterns = [
-    path('health/', health, name='health'),
+    path('setup/', business_setup, name='business-setup'),
 ]

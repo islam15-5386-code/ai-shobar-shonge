@@ -1,7 +1,8 @@
 from django.urls import path
 
-from .views import health
+from .views import faq_detail, faq_list_create
 
 urlpatterns = [
-    path('health/', health, name='health'),
+    path('', faq_list_create, name='faq-list-create'),
+    path('<int:faq_id>/', faq_detail, name='faq-detail'),
 ]

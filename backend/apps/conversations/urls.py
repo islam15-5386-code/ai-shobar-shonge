@@ -1,7 +1,7 @@
 from django.urls import path
 
-from .views import health
+from .views import conversation_history
 
 urlpatterns = [
-    path('health/', health, name='health'),
+    path('history/', conversation_history, name='conversation-history'),
 ]
