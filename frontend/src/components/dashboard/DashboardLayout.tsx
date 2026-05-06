@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const nav = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -21,6 +23,53 @@ const nav = [
 export const DashboardLayout = () => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const [planName, setPlanName] = useState("Plan");
+  const [used, setUsed] = useState(0);
+  const [limit, setLimit] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "New message এসেছে Live Inbox-এ", time: "2m ago", read: false },
+    { id: 2, text: "Ticket #1024 pending আছে", time: "8m ago", read: false },
+    { id: 3, text: "AI usage 80% cross করেছে", time: "15m ago", read: true },
+  ]);
+
+  const usagePct = useMemo(() => {
+    if (!limit || limit <= 0) return 0;
+    return Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
+  }, [used, limit]);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  useEffect(() => {
+    let mounted = true;
+    let timer: number | undefined;
+
+    const loadUsage = async () => {
+      try {
+        const [subRes, usageRes] = await Promise.allSettled([
+          apiFetch<any>("/api/billing/subscription/"),
+          apiFetch<any>("/api/billing/usage/?metric=messages"),
+        ]);
+        if (!mounted) return;
+        const sub = subRes.status === "fulfilled" ? subRes.value : null;
+        const usage = usageRes.status === "fulfilled" ? usageRes.value : null;
+        setPlanName(sub?.plan?.name || "Plan");
+        setUsed(Number(usage?.quantity || 0));
+        setLimit(Number(usage?.limit || 0));
+        setIsLoaded(true);
+      } catch {
+        if (!mounted) return;
+        setIsLoaded(true);
+      }
+    };
+
+    loadUsage();
+    timer = window.setInterval(loadUsage, 10000);
+    return () => {
+      mounted = false;
+      if (timer) window.clearInterval(timer);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex w-full bg-[#f6f8fb] text-slate-900">
@@ -60,11 +109,13 @@ export const DashboardLayout = () => {
           <div className="bg-sidebar-accent rounded-xl p-4 border border-sidebar-border">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <div className="text-xs font-semibold text-slate-900">Pro Plan</div>
+              <div className="text-xs font-semibold text-slate-900">{planName}</div>
             </div>
-            <div className="text-[11px] text-sidebar-foreground/80 mb-3">9,421 / 15,000 conversations used</div>
+            <div className="text-[11px] text-sidebar-foreground/80 mb-3">
+              {isLoaded ? `${used.toLocaleString()} / ${limit.toLocaleString()} conversations used` : "Loading usage..."}
+            </div>
             <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full gradient-primary" style={{ width: "63%" }} />
+              <div className="h-full gradient-primary transition-all duration-500" style={{ width: `${usagePct}%` }} />
             </div>
           </div>
         </div>
@@ -82,10 +133,39 @@ export const DashboardLayout = () => {
             <Input placeholder="Search conversations, tickets, customers..." className="pl-9 bg-slate-100 border-slate-200" />
           </div>
           <div className="flex-1 md:hidden" />
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0 overflow-hidden">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="font-semibold text-sm">Notifications</div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+                >
+                  Mark all read
+                </Button>
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, read: true } : item)))}
+                    className={`w-full text-left px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 ${n.read ? "opacity-70" : ""}`}
+                  >
+                    <div className="text-sm">{n.text}</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">{n.time}</div>
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
           <NavLink to="/dashboard/onboarding" className="hidden sm:block">
             <Badge variant="outline" className="gap-1"><Sparkles className="w-3 h-3" /> Setup</Badge>
           </NavLink>

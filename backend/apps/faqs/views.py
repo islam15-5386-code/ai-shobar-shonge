@@ -3,13 +3,13 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.ai_gateway.services import build_embedding
-from apps.businesses.models import Business
+from apps.businesses.access import get_user_business
 from .models import FAQ
 
 
 @api_view(['GET', 'POST'])
 def faq_list_create(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -38,7 +38,7 @@ def faq_list_create(request):
 
 @api_view(['GET', 'PATCH', 'DELETE'])
 def faq_detail(request, faq_id):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     faq = FAQ.objects.filter(id=faq_id, business=business).first()
     if not faq:
         return Response({'detail': 'faq not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -86,7 +86,7 @@ def _serialize(faq: FAQ):
 
 @api_view(['POST'])
 def faq_bulk_import(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
     items = request.data.get('items') or []
@@ -112,7 +112,7 @@ def faq_bulk_import(request):
 
 @api_view(['POST'])
 def faq_reindex(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
     faqs = FAQ.objects.filter(business=business)

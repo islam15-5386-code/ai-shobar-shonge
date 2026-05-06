@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from apps.billing.limits import get_ai_reply_limit_state, increment_ai_usage
 from apps.businesses.models import Business
+from apps.businesses.access import get_user_business
 from apps.conversations.models import Conversation, Message
 from apps.conversations.realtime import publish_inbox_event
 from apps.tickets.models import Ticket
@@ -175,7 +176,7 @@ def website_chat(request):
 
 @api_view(['GET', 'PUT'])
 def ai_settings(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
     settings_obj, _ = AIAssistantSetting.objects.get_or_create(business=business)
@@ -220,7 +221,7 @@ def ai_settings(request):
 
 @api_view(['GET'])
 def ai_logs(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
 

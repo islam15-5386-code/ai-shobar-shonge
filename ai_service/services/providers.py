@@ -77,6 +77,14 @@ def create_provider_bundle() -> ProviderBundle:
     embedding_provider = settings.embedding_provider
     whisper_provider = settings.whisper_provider
 
+    if llm_provider == "gemini":
+        return ProviderBundle(
+            llm=GeminiLLMProvider(),
+            embedding=LocalCPUEmbeddingProvider(),
+            whisper=LocalCPUWhisperProvider(),
+            mode=mode if mode in {"cpu", "gpu"} else "cpu",
+        )
+
     if mode == "gpu" and llm_provider == "local" and embedding_provider == "local" and whisper_provider == "local":
         return ProviderBundle(
             llm=LocalGPULLMProvider(),
@@ -91,10 +99,3 @@ def create_provider_bundle() -> ProviderBundle:
         whisper=LocalCPUWhisperProvider(),
         mode="cpu",
     )
-    if llm_provider == "gemini":
-        return ProviderBundle(
-            llm=GeminiLLMProvider(),
-            embedding=LocalCPUEmbeddingProvider() if embedding_provider == "local" else LocalCPUEmbeddingProvider(),
-            whisper=LocalCPUWhisperProvider() if whisper_provider == "local" else LocalCPUWhisperProvider(),
-            mode=mode if mode in {"cpu", "gpu"} else "cpu",
-        )

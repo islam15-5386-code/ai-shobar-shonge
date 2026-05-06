@@ -14,10 +14,13 @@ export function clearAccessToken() {
 
 export async function apiFetch<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getAccessToken();
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined),
   };
+  if (!isFormData && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
