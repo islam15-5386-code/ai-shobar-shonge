@@ -5,9 +5,8 @@ from django.contrib.auth.models import User
 class TeamMember(models.Model):
     ROLE_CHOICES = (
         ('owner', 'Owner'),
-        ('admin', 'Admin'),
+        ('manager', 'Manager'),
         ('agent', 'Agent'),
-        ('viewer', 'Viewer'),
     )
 
     business = models.ForeignKey('businesses.Business', on_delete=models.CASCADE, related_name='team_members')

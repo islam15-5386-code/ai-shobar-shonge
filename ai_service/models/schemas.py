@@ -49,3 +49,29 @@ class EmbeddingResponse(BaseModel):
 
 class VoiceResponse(BaseModel):
     text: str
+
+
+class AIRespondRequest(BaseModel):
+    message: str = Field(..., min_length=1)
+    business_id: int | None = None
+    locale: str = "en"
+
+
+class AIRespondResponse(BaseModel):
+    answer: str
+    confidence: float
+    intent: str
+    sentiment: str
+    should_escalate: bool = False
+    sources: list[str] = []
+    model_name: str = "mock"
+
+
+class ReindexRequest(BaseModel):
+    business_id: int
+
+
+class ReindexResponse(BaseModel):
+    business_id: int
+    indexed_documents: int
+    status: str

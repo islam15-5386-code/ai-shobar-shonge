@@ -2,12 +2,12 @@ import json
 from pathlib import Path
 
 from config import settings
-from services.embedding_service import EmbeddingService
+from .embedding_service import EmbeddingService
 
 
 class RAGService:
-    def __init__(self) -> None:
-        self.embedding = EmbeddingService()
+    def __init__(self, embedding_provider: EmbeddingService | None = None) -> None:
+        self.embedding = embedding_provider or EmbeddingService()
         self.store_path = Path(settings.vector_store_path)
         self.documents = self._load_documents()
 

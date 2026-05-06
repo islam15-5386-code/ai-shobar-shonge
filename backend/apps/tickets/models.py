@@ -17,4 +17,12 @@ class Ticket(models.Model):
     details = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     assigned_agent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_tickets')
+    priority = models.CharField(max_length=20, default='medium')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class TicketComment(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

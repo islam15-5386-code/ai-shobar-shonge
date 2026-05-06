@@ -1,4 +1,6 @@
-from .schemas import (
+﻿from .schemas import (
+    AIRespondRequest,
+    AIRespondResponse,
     ChatRequest,
     ChatResponse,
     EmbeddingItem,
@@ -6,12 +8,16 @@ from .schemas import (
     EmbeddingResponse,
     IntentRequest,
     IntentResponse,
+    ReindexRequest,
+    ReindexResponse,
     SentimentRequest,
     SentimentResponse,
     VoiceResponse,
 )
 
 __all__ = [
+    "AIRespondRequest",
+    "AIRespondResponse",
     "ChatRequest",
     "ChatResponse",
     "EmbeddingItem",
@@ -19,6 +25,8 @@ __all__ = [
     "EmbeddingResponse",
     "IntentRequest",
     "IntentResponse",
+    "ReindexRequest",
+    "ReindexResponse",
     "SentimentRequest",
     "SentimentResponse",
     "VoiceResponse",

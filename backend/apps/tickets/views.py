@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from apps.businesses.models import Business
 from apps.conversations.models import Conversation
 from apps.conversations.realtime import publish_inbox_event
-from .models import Ticket
+from .models import Ticket, TicketComment
 
 
 @api_view(['GET', 'POST', 'PATCH'])
@@ -92,3 +92,80 @@ def ticket_kanban(request):
             }
         )
     return Response(columns)
+
+
+@api_view(['POST'])
+def ticket_comment(request, ticket_id):
+    business = Business.objects.filter(owner=request.user).first()
+    ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
+    if not ticket:
+        return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    text = str(request.data.get('text', '')).strip()
+    if not text:
+        return Response({'detail': 'text is required'}, status=status.HTTP_400_BAD_REQUEST)
+    comment = TicketComment.objects.create(ticket=ticket, author=request.user, text=text)
+    return Response({'id': comment.id, 'text': comment.text, 'created_at': comment.created_at}, status=201)
+
+
+@api_view(['POST'])
+def ticket_assign(request, ticket_id):
+    business = Business.objects.filter(owner=request.user).first()
+    ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
+    if not ticket:
+        return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    ticket.assigned_agent = request.user
+    ticket.save(update_fields=['assigned_agent'])
+    return Response({'id': ticket.id, 'assigned_agent_id': ticket.assigned_agent_id})
+
+
+@api_view(['POST'])
+def ticket_status(request, ticket_id):
+    business = Business.objects.filter(owner=request.user).first()
+    ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
+    if not ticket:
+        return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    val = str(request.data.get('status', '')).strip()
+    valid = {x[0] for x in Ticket.STATUS_CHOICES}
+    if val not in valid:
+        return Response({'detail': 'invalid status'}, status=status.HTTP_400_BAD_REQUEST)
+    ticket.status = val
+    ticket.save(update_fields=['status'])
+    return Response({'id': ticket.id, 'status': ticket.status})
+
+
+@api_view(['POST'])
+def ticket_priority(request, ticket_id):
+    business = Business.objects.filter(owner=request.user).first()
+    ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
+    if not ticket:
+        return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    val = str(request.data.get('priority', '')).strip() or 'medium'
+    ticket.priority = val
+    ticket.save(update_fields=['priority'])
+    return Response({'id': ticket.id, 'priority': ticket.priority})
+
+
+@api_view(['POST'])
+def ticket_resolve(request, ticket_id):
+    business = Business.objects.filter(owner=request.user).first()
+    ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
+    if not ticket:
+        return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    ticket.status = 'resolved'
+    ticket.save(update_fields=['status'])
+    return Response({'id': ticket.id, 'status': ticket.status})
+
+
+@api_view(['POST'])
+def human_handover(request, ticket_id):
+    business = Business.objects.filter(owner=request.user).first()
+    ticket = Ticket.objects.filter(id=ticket_id, business=business).select_related('conversation').first()
+    if not ticket:
+        return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    if ticket.conversation:
+        ticket.conversation.needs_human = True
+        ticket.conversation.status = 'waiting_human'
+        ticket.conversation.save(update_fields=['needs_human', 'status', 'updated_at'])
+    ticket.status = 'in_progress'
+    ticket.save(update_fields=['status'])
+    return Response({'id': ticket.id, 'status': ticket.status, 'handover': True})

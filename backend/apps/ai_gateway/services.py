@@ -157,5 +157,30 @@ def should_escalate(confidence: float, sentiment: str, intent: str) -> tuple[boo
     return False, "none"
 
 
+def should_escalate_with_settings(
+    confidence: float,
+    sentiment: str,
+    intent: str,
+    user_text: str,
+    settings_obj=None,
+) -> tuple[bool, str]:
+    text = (user_text or "").lower()
+
+    if settings_obj is None:
+        return should_escalate(confidence, sentiment, intent)
+
+    human_keywords = ["human", "agent", "support", "refund", "cancel", "urgent", "মানুষ", "এজেন্ট", "রিফান্ড", "ক্যানসেল"]
+
+    if settings_obj.rule_customer_requests_human and any(k in text for k in human_keywords):
+        return True, "customer_requested_human"
+    if settings_obj.rule_refund and intent == "refund":
+        return True, "refund_intent"
+    if settings_obj.rule_negative_sentiment and sentiment == "negative":
+        return True, "negative_sentiment"
+    if settings_obj.rule_below_confidence and confidence < float(settings_obj.confidence_threshold):
+        return True, "below_confidence_threshold"
+    return False, "none"
+
+
 def to_bangla_reply(text: str) -> str:
     return f"আপনার প্রশ্নের জন্য ধন্যবাদ। {text}"

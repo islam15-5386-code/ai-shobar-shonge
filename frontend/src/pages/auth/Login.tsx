@@ -1,8 +1,10 @@
-import { Link, useNavigate } from "react-router-dom";
+ï»¿import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles } from "lucide-react";
+import { apiFetch, setAccessToken } from "@/lib/api";
+import { toast } from "sonner";
 
 export const AuthShell = ({ title, subtitle, children, footer }: any) => (
   <div className="min-h-screen bg-[#f6f8fb]">
@@ -32,7 +34,7 @@ export const AuthShell = ({ title, subtitle, children, footer }: any) => (
           <h2 className="text-4xl font-bold leading-tight mb-4">"Support your customers faster with one unified platform."</h2>
           <p className="text-white/80">Rashed Hossain, Founder</p>
         </div>
-        <div className="text-xs text-white/60 relative">© 2026 Shobar Shonge · Bangladesh</div>
+        <div className="text-xs text-white/60 relative">Â© 2026 Shobar Shonge Â· Bangladesh</div>
       </div>
 
       <div className="flex items-center justify-center p-6 md:p-12 bg-transparent">
@@ -53,23 +55,46 @@ export const AuthShell = ({ title, subtitle, children, footer }: any) => (
 
 export default function Login() {
   const nav = useNavigate();
+
   return (
     <AuthShell
       title="Welcome back"
       subtitle="Log in to your Shobar Shonge dashboard"
       footer={<>Don't have an account? <Link to="/register" className="text-primary font-medium hover:underline">Sign up</Link></>}
     >
-      <form onSubmit={(e) => { e.preventDefault(); nav("/dashboard"); }} className="space-y-4">
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          const formData = new FormData(form);
+          const username = String(formData.get("email") || "").trim();
+          const password = String(formData.get("password") || "");
+
+          try {
+            const payload = await apiFetch<{ tokens: { access: string; refresh: string } }>("/api/accounts/login/", {
+              method: "POST",
+              body: JSON.stringify({ username, password }),
+            });
+            setAccessToken(payload.tokens.access);
+            localStorage.setItem("refresh_token", payload.tokens.refresh);
+            toast.success("Login successful");
+            nav("/dashboard");
+          } catch {
+            toast.error("Login failed. Check username/password.");
+          }
+        }}
+        className="space-y-4"
+      >
         <div className="space-y-2">
-          <Label>Email</Label>
-          <Input type="email" placeholder="you@business.com" defaultValue="demo@shobarshonge.ai" required />
+          <Label>Email / Username</Label>
+          <Input name="email" type="text" placeholder="owner@supportbond.ai" defaultValue="owner@supportbond.ai" required />
         </div>
         <div className="space-y-2">
           <div className="flex justify-between">
             <Label>Password</Label>
             <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
           </div>
-          <Input type="password" placeholder="********" defaultValue="demo1234" required />
+          <Input name="password" type="password" placeholder="********" defaultValue="password123" required />
         </div>
         <Button type="submit" className="w-full gradient-primary border-0 shadow-glow h-11">Log in to Dashboard</Button>
         <Button type="button" variant="outline" className="w-full h-11">Continue with Google</Button>
