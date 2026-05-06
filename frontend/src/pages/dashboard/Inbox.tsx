@@ -1,4 +1,4 @@
-ï»¿import { FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ export default function Inbox() {
   const [isAssigned, setIsAssigned] = useState(false);
   const [isResolved, setIsResolved] = useState(false);
   const [createdTicketId, setCreatedTicketId] = useState<number | null>(null);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [threads, setThreads] = useState<Record<string, typeof messages>>(() => {
     const initial: Record<string, typeof messages> = {};
     conversations.forEach((c, idx) => {
@@ -89,16 +91,44 @@ export default function Inbox() {
   const handleSend = (e: FormEvent) => {
     e.preventDefault();
     const text = draft.trim();
-    if (!text) return;
+    if (!text && imagePreviews.length === 0) return;
     const now = new Date();
     const hh = String(now.getHours() % 12 || 12).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const time = `${hh}:${mm} ${now.getHours() >= 12 ? "PM" : "AM"}`;
-    setThreads((prev) => ({
-      ...prev,
-      [active.id]: [...(prev[active.id] || []), { from: "agent", text, time }],
-    }));
+    setThreads((prev) => {
+      const next = [...(prev[active.id] || [])];
+      if (text) next.push({ from: "agent", text, time });
+      imagePreviews.forEach((src) => next.push({ from: "agent", text: `[image] ${src}`, time }));
+      return {
+        ...prev,
+        [active.id]: next,
+      };
+    });
     setDraft("");
+    setImagePreviews([]);
+  };
+
+  const handlePickImage = () => fileInputRef.current?.click();
+
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const supported = files.filter((f) => f.type.startsWith("image/"));
+    if (supported.length !== files.length) toast.error("Only image files are allowed");
+    const readers = supported.map(
+      (file) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        }),
+    );
+    Promise.all(readers)
+      .then((urls) => setImagePreviews((prev) => [...prev, ...urls]))
+      .catch(() => toast.error("Image load failed"));
+    e.target.value = "";
   };
 
   return (
@@ -141,7 +171,7 @@ export default function Inbox() {
             <Avatar><AvatarFallback className="gradient-primary text-white">{active.avatar}</AvatarFallback></Avatar>
             <div>
               <div className="font-semibold text-sm">{active.name}</div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-success" /> Active now Â· {active.channel}</div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-success" /> Active now · {active.channel}</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -156,7 +186,11 @@ export default function Inbox() {
           {activeMessages.map((m, i) => (
             <div key={i} className={`flex ${m.from === "customer" ? "justify-start" : "justify-end"}`}>
               <div className="max-w-md">
-                <div className={`px-4 py-2.5 rounded-2xl text-sm font-bangla ${m.from === "customer" ? "bg-card rounded-tl-sm border" : "gradient-primary text-primary-foreground rounded-tr-sm shadow-md"}`}>{m.text}</div>
+                {m.text.startsWith("[image] ") ? (
+                  <img src={m.text.replace("[image] ", "")} alt="attachment" className="max-w-[220px] rounded-2xl border shadow-sm" />
+                ) : (
+                  <div className={`px-4 py-2.5 rounded-2xl text-sm font-bangla ${m.from === "customer" ? "bg-card rounded-tl-sm border" : "gradient-primary text-primary-foreground rounded-tr-sm shadow-md"}`}>{m.text}</div>
+                )}
                 <div className={`text-[10px] text-muted-foreground mt-1 px-1 flex items-center gap-1 ${m.from === "customer" ? "" : "justify-end"}`}>
                   {m.from === "ai" && <Bot className="w-3 h-3" />} {m.time}
                 </div>
@@ -167,11 +201,29 @@ export default function Inbox() {
 
         <div className="p-4 bg-card border-t">
           <form onSubmit={handleSend} className="flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2">
-            <Button size="icon" variant="ghost" className="w-8 h-8"><Paperclip className="w-4 h-4" /></Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.heic,.heif,image/*"
+              multiple
+              className="hidden"
+              onChange={handleImageChange}
+            />
+            <Button type="button" size="icon" variant="ghost" className="w-8 h-8" onClick={handlePickImage}><Paperclip className="w-4 h-4" /></Button>
             <Input placeholder="Type your message... / use AI suggestions" className="border-0 bg-transparent focus-visible:ring-0" value={draft} onChange={(e) => setDraft(e.target.value)} />
             <Button size="icon" variant="ghost" className="w-8 h-8"><Smile className="w-4 h-4" /></Button>
             <Button type="submit" size="icon" className="gradient-primary border-0 w-9 h-9"><Send className="w-4 h-4" /></Button>
           </form>
+          {imagePreviews.length > 0 && (
+            <div className="mt-2 flex gap-2 overflow-x-auto">
+              {imagePreviews.map((src, i) => (
+                <div key={`${i}-${src.slice(0, 20)}`} className="relative shrink-0">
+                  <img src={src} alt={`preview-${i}`} className="w-16 h-16 rounded-md object-cover border" />
+                  <button type="button" className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-black/70 text-white text-[10px]" onClick={() => setImagePreviews((prev) => prev.filter((_, idx) => idx !== i))}>x</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -189,7 +241,7 @@ export default function Inbox() {
         <div className="p-5 border-b">
           <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-primary" /><h4 className="font-semibold text-sm">AI Insights</h4></div>
           <Card className="p-3 bg-primary/5 border-primary/10 text-xs space-y-2">
-            <div><strong>Intent:</strong> Product inquiry â†’ Purchase</div>
+            <div><strong>Intent:</strong> Product inquiry ? Purchase</div>
             <div><strong>Confidence:</strong> 94%</div>
             <div><strong>Suggested:</strong> Offer free home delivery</div>
           </Card>
@@ -209,9 +261,9 @@ export default function Inbox() {
                       <div className="font-medium">Order #{o.orderId}</div>
                       <Badge variant="outline">{trackingLabel(o.status)}</Badge>
                     </div>
-                    <div className="text-muted-foreground mt-1">à§³{o.amountBdt.toLocaleString()} Â· {o.items}</div>
-                    <div className="text-muted-foreground mt-1">Courier: {o.courier} Â· ETA: {o.eta}</div>
-                    <div className="text-muted-foreground mt-1">Tracking: {o.trackingCode} Â· Updated: {o.updatedAt}</div>
+                    <div className="text-muted-foreground mt-1">?{o.amountBdt.toLocaleString()} · {o.items}</div>
+                    <div className="text-muted-foreground mt-1">Courier: {o.courier} · ETA: {o.eta}</div>
+                    <div className="text-muted-foreground mt-1">Tracking: {o.trackingCode} · Updated: {o.updatedAt}</div>
                     <div className="h-1.5 bg-muted rounded-full mt-2 overflow-hidden">
                       <div className={`${o.status === "cancelled" ? "bg-destructive" : "bg-primary"} h-full`} style={{ width: `${progress}%` }} />
                     </div>

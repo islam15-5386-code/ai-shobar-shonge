@@ -1,11 +1,11 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, MessagesSquare, Ticket, BookOpen, Package, Plug, Settings, History, CreditCard, Bell, Search, Bot, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, clearAccessToken } from "@/lib/api";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const nav = [
@@ -23,6 +23,7 @@ const nav = [
 export const DashboardLayout = () => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const [planName, setPlanName] = useState("Plan");
   const [used, setUsed] = useState(0);
   const [limit, setLimit] = useState(0);
@@ -39,6 +40,17 @@ export const DashboardLayout = () => {
   }, [used, limit]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  const handleSignOut = async () => {
+    try {
+      await apiFetch("/api/accounts/logout/", { method: "POST", body: JSON.stringify({}) });
+    } catch {
+      // ignore logout API failure and clear local session anyway
+    } finally {
+      clearAccessToken();
+      navigate("/login");
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -169,9 +181,20 @@ export const DashboardLayout = () => {
           <NavLink to="/dashboard/onboarding" className="hidden sm:block">
             <Badge variant="outline" className="gap-1"><Sparkles className="w-3 h-3" /> Setup</Badge>
           </NavLink>
-          <Avatar className="w-9 h-9 ring-2 ring-primary/20">
-            <AvatarFallback className="gradient-primary text-white text-xs font-semibold">RH</AvatarFallback>
-          </Avatar>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="rounded-full">
+                <Avatar className="w-9 h-9 ring-2 ring-primary/20">
+                  <AvatarFallback className="gradient-primary text-white text-xs font-semibold">RH</AvatarFallback>
+                </Avatar>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-40 p-2">
+              <Button variant="ghost" className="w-full justify-start text-sm" onClick={handleSignOut}>
+                Sign out
+              </Button>
+            </PopoverContent>
+          </Popover>
         </header>
         <main key={location.pathname} className="flex-1 animate-fade-in-up bg-[#f6f8fb]">
           <Outlet />
