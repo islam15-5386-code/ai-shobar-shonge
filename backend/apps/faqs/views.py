@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from apps.ai_gateway.services import build_embedding
 from apps.businesses.models import Business
 from .models import FAQ
 
@@ -21,7 +22,8 @@ def faq_list_create(request):
     if not question or not answer:
         return Response({'detail': 'question and answer are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    faq = FAQ.objects.create(business=business, question=question, answer=answer)
+    embedding = build_embedding(f"{question} {answer}")
+    faq = FAQ.objects.create(business=business, question=question, answer=answer, embedding_vector=embedding)
     return Response(_serialize(faq), status=201)
 
 
@@ -42,6 +44,8 @@ def faq_detail(request, faq_id):
             faq.answer = request.data['answer']
         if 'is_active' in request.data:
             faq.is_active = bool(request.data['is_active'])
+        if 'question' in request.data or 'answer' in request.data:
+            faq.embedding_vector = build_embedding(f"{faq.question} {faq.answer}")
         faq.save()
         return Response(_serialize(faq))
 
@@ -55,5 +59,6 @@ def _serialize(faq: FAQ):
         'question': faq.question,
         'answer': faq.answer,
         'is_active': faq.is_active,
+        'has_embedding': bool(faq.embedding_vector),
         'created_at': faq.created_at,
     }
