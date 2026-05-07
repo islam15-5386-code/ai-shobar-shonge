@@ -4,13 +4,18 @@ from rest_framework.response import Response
 from django.db.models import Q
 
 from apps.ai_gateway.services import detect_intent, detect_sentiment, find_best_faq
+<<<<<<< HEAD
 from apps.businesses.access import get_user_business, is_agent, is_owner_or_manager
+=======
+from apps.businesses.access import get_user_business
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 from apps.conversations.realtime import publish_inbox_event
 from apps.customers.models import CustomerProfile
 from apps.marketplace.permissions import can_manage_marketplace, get_vendor_for_user
 from .models import Conversation, InternalNote
 
 
+<<<<<<< HEAD
 def _conversation_scope_for_user(request, qs, business):
     vendor = get_vendor_for_user(request.user, business)
     if is_owner_or_manager(request.user, business) or can_manage_marketplace(request.user, business):
@@ -22,12 +27,21 @@ def _conversation_scope_for_user(request, qs, business):
     return qs.none()
 
 
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 @api_view(['GET'])
 def conversation_list(request):
     business = get_user_business(request.user)
     if not business:
         return Response([], status=status.HTTP_200_OK)
+<<<<<<< HEAD
     qs = _conversation_scope_for_user(request, Conversation.objects.filter(business=business), business)
+=======
+    vendor = get_vendor_for_user(request.user, business)
+    qs = Conversation.objects.filter(business=business)
+    if not can_manage_marketplace(request.user, business) and vendor:
+        qs = qs.filter(vendor=vendor)
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
     return Response(
         [
             {
@@ -50,7 +64,14 @@ def conversation_history(request):
     business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+<<<<<<< HEAD
     qs = _conversation_scope_for_user(request, Conversation.objects.filter(business=business), business)
+=======
+    vendor = get_vendor_for_user(request.user, business)
+    qs = Conversation.objects.filter(business=business)
+    if not can_manage_marketplace(request.user, business) and vendor:
+        qs = qs.filter(vendor=vendor)
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     q = str(request.query_params.get('q', '')).strip()
     channel = str(request.query_params.get('channel', 'all')).strip().lower()
@@ -118,7 +139,14 @@ def inbox(request):
     business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+<<<<<<< HEAD
     qs = _conversation_scope_for_user(request, Conversation.objects.filter(business=business), business)
+=======
+    vendor = get_vendor_for_user(request.user, business)
+    qs = Conversation.objects.filter(business=business)
+    if not can_manage_marketplace(request.user, business) and vendor:
+        qs = qs.filter(vendor=vendor)
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     payload = []
     conversations = qs.order_by('-updated_at')[:200]
@@ -147,8 +175,11 @@ def assign_agent(request, conversation_id):
     conversation = Conversation.objects.filter(id=conversation_id, business=business).first()
     if not conversation:
         return Response({'detail': 'conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+<<<<<<< HEAD
     if not (is_owner_or_manager(request.user, business) or is_agent(request.user, business)):
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     agent_id = request.data.get('agent_id')
     if agent_id and str(agent_id) != str(request.user.id):
@@ -168,9 +199,12 @@ def internal_notes(request, conversation_id):
     conversation = Conversation.objects.filter(id=conversation_id, business=business).first()
     if not conversation:
         return Response({'detail': 'conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+<<<<<<< HEAD
     scoped = _conversation_scope_for_user(request, Conversation.objects.filter(id=conversation.id), business)
     if not scoped.exists():
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     if request.method == 'GET':
         return Response([
@@ -200,9 +234,12 @@ def ai_suggested_reply(request, conversation_id):
     conversation = Conversation.objects.filter(id=conversation_id, business=business).first()
     if not conversation:
         return Response({'detail': 'conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+<<<<<<< HEAD
     scoped = _conversation_scope_for_user(request, Conversation.objects.filter(id=conversation.id), business)
     if not scoped.exists():
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     last_user_message = conversation.messages.filter(role='user').order_by('-created_at').first()
     if not last_user_message:

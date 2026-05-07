@@ -1,5 +1,8 @@
 ﻿import { Link, useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import { useEffect, useState } from "react";
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +38,11 @@ export const AuthShell = ({ title, subtitle, children, footer }: any) => (
           <h2 className="text-4xl font-bold leading-tight mb-4">"Support your customers faster with one unified platform."</h2>
           <p className="text-white/80">Rashed Hossain, Founder</p>
         </div>
+<<<<<<< HEAD
         <div className="text-xs text-white/60 relative">2026 Shobar Shonge - Bangladesh</div>
+=======
+        <div className="text-xs text-white/60 relative">© 2026 Shobar Shonge · Bangladesh</div>
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
       </div>
 
       <div className="flex items-center justify-center p-6 md:p-12 bg-transparent">
@@ -56,6 +63,7 @@ export const AuthShell = ({ title, subtitle, children, footer }: any) => (
 
 export default function Login() {
   const nav = useNavigate();
+<<<<<<< HEAD
   const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
   const [googleDevFallback, setGoogleDevFallback] = useState(false);
   const [googleMissing, setGoogleMissing] = useState<string[]>([]);
@@ -90,6 +98,8 @@ export default function Login() {
       }
     }
   };
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
   return (
     <AuthShell

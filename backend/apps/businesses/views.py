@@ -141,8 +141,11 @@ def business_setup(request):
 @api_view(['POST'])
 def upload_logo(request):
     business = _ensure_business_for_user(request.user)
+<<<<<<< HEAD
     if not can_manage_business_profile(request.user, business):
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     logo = request.FILES.get('logo')
     if not logo:

@@ -6,7 +6,11 @@ from rest_framework.response import Response
 
 from apps.accounts.models import UserProfile
 from apps.billing.models import Subscription
+<<<<<<< HEAD
 from apps.businesses.access import can_manage_team, get_user_business
+=======
+from apps.businesses.access import can_manage_business_data, get_user_business
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 from .models import TeamMember
 
 
@@ -19,8 +23,18 @@ def team_members(request):
     business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+<<<<<<< HEAD
     if not can_manage_team(request.user, business):
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+    if not can_manage_business_data(request.user, business):
+        # Fallback for users who are manager/owner via profile but may not
+        # have synced TeamMember role yet.
+        profile = getattr(request.user, 'profile', None)
+        profile_role = getattr(profile, 'role', '')
+        if profile_role not in ['owner', 'manager']:
+            return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     if request.method == 'GET':
         rows = TeamMember.objects.filter(business=business, is_active=True).select_related('user').order_by('id')

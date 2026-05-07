@@ -1,5 +1,8 @@
 import json
+<<<<<<< HEAD
 from urllib import error, request as urlrequest
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -16,9 +19,13 @@ from apps.ai_gateway.services import (
     should_escalate,
 )
 from apps.businesses.models import Business
+<<<<<<< HEAD
 from apps.businesses.access import can_manage_integrations
 from apps.conversations.models import Conversation, Message
 from apps.conversations.realtime import publish_inbox_event
+=======
+from apps.conversations.models import Conversation, Message
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 from apps.customers.models import CustomerProfile
 from apps.tickets.models import Ticket
 from .models import MessengerIntegration, WhatsAppIntegration
@@ -39,8 +46,11 @@ def integrations_summary(request):
     business = Business.objects.filter(owner=request.user).first()
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+<<<<<<< HEAD
     if not can_manage_integrations(request.user, business):
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
     m = MessengerIntegration.objects.filter(business=business).first()
     w = WhatsAppIntegration.objects.filter(business=business).first()
     return Response(
@@ -56,8 +66,11 @@ def messenger_setup(request):
     business = Business.objects.filter(owner=request.user).first()
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+<<<<<<< HEAD
     if not can_manage_integrations(request.user, business):
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     if request.method == 'GET':
         integration = MessengerIntegration.objects.filter(business=business).first()
@@ -189,8 +202,11 @@ def whatsapp_setup(request):
     business = Business.objects.filter(owner=request.user).first()
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+<<<<<<< HEAD
     if not can_manage_integrations(request.user, business):
         return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     if request.method == 'GET':
         integration = WhatsAppIntegration.objects.filter(business=business).first()
@@ -226,6 +242,7 @@ def whatsapp_setup(request):
     return Response({'id': integration.id, 'phone_number_id': integration.phone_number_id, 'is_active': integration.is_active}, status=201)
 
 
+<<<<<<< HEAD
 @api_view(['GET'])
 def whatsapp_connection_status(request):
     business = Business.objects.filter(owner=request.user).first()
@@ -361,6 +378,8 @@ def whatsapp_bulk_send(request):
     )
 
 
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 @csrf_exempt
 def whatsapp_webhook(request):
     if request.method == 'GET':
@@ -444,6 +463,7 @@ def _handle_whatsapp_message(integration: WhatsAppIntegration, message: dict) ->
 
     visitor_id = f"wa:{wa_from}"
     conversation, _ = Conversation.objects.get_or_create(business=business, visitor_id=visitor_id)
+<<<<<<< HEAD
     in_msg = Message.objects.create(conversation=conversation, role='user', text=text)
     publish_inbox_event(
         business.id,
@@ -458,6 +478,9 @@ def _handle_whatsapp_message(integration: WhatsAppIntegration, message: dict) ->
             'updated_at': str(conversation.updated_at),
         },
     )
+=======
+    Message.objects.create(conversation=conversation, role='user', text=text)
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     intent = detect_intent(text)
     sentiment = detect_sentiment(text)
@@ -477,6 +500,7 @@ def _handle_whatsapp_message(integration: WhatsAppIntegration, message: dict) ->
         )
         reply = 'Your WhatsApp message has been forwarded to a human agent.'
 
+<<<<<<< HEAD
     out_msg = Message.objects.create(conversation=conversation, role='assistant', text=reply)
     send_whatsapp_text(integration.access_token, integration.phone_number_id, wa_from, reply)
     publish_inbox_event(
@@ -492,6 +516,10 @@ def _handle_whatsapp_message(integration: WhatsAppIntegration, message: dict) ->
             'updated_at': str(conversation.updated_at),
         },
     )
+=======
+    Message.objects.create(conversation=conversation, role='assistant', text=reply)
+    send_whatsapp_text(integration.access_token, integration.phone_number_id, wa_from, reply)
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
     AIInteractionLog.objects.create(
         business=business,

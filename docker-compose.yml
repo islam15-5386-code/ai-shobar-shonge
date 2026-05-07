@@ -18,7 +18,10 @@ services:
 
   backend:
     build: ./backend
+<<<<<<< HEAD
     command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
     environment:
       DJANGO_DEBUG: "1"
       DJANGO_SECRET_KEY: dev-secret-key
@@ -31,8 +34,11 @@ services:
       DB_PORT: "5432"
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+<<<<<<< HEAD
       REDIS_URL: redis://redis:6379/0
       CHANNEL_LAYER_BACKEND: redis
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
       AI_SERVICE_URL: http://ai-service:8000
     depends_on:
       - db
@@ -55,8 +61,11 @@ services:
       DB_PORT: "5432"
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+<<<<<<< HEAD
       REDIS_URL: redis://redis:6379/0
       CHANNEL_LAYER_BACKEND: redis
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
     depends_on:
       - db
       - redis
@@ -75,8 +84,11 @@ services:
       DB_PORT: "5432"
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+<<<<<<< HEAD
       REDIS_URL: redis://redis:6379/0
       CHANNEL_LAYER_BACKEND: redis
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
     depends_on:
       - db
       - redis
@@ -89,6 +101,7 @@ services:
     ports:
       - "8001:8000"
 
+<<<<<<< HEAD
   frontend:
     image: node:20
     working_dir: /app
@@ -104,5 +117,7 @@ services:
     ports:
       - "5173:5173"
 
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 volumes:
   pgdata:

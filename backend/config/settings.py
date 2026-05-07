@@ -66,6 +66,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
+<<<<<<< HEAD
 channel_backend = os.getenv('CHANNEL_LAYER_BACKEND', '').strip().lower()
 redis_url = os.getenv('REDIS_URL', os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')).strip()
 if channel_backend == 'inmemory':
@@ -76,6 +77,42 @@ else:
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {'hosts': [redis_url]},
         }
+    }
+
+db_url = os.getenv('DATABASE_URL', '').strip()
+if db_url:
+    parsed = urlparse(db_url)
+    if parsed.scheme.startswith('sqlite'):
+        db_name = parsed.path.lstrip('/') or 'db.sqlite3'
+        DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': str(BASE_DIR / db_name)}}
+    elif parsed.scheme in {'postgres', 'postgresql'}:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': parsed.path.lstrip('/'),
+                'USER': parsed.username or '',
+                'PASSWORD': parsed.password or '',
+                'HOST': parsed.hostname or '',
+                'PORT': str(parsed.port or ''),
+            }
+        }
+    else:
+        DATABASES = {'default': {'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'), 'NAME': os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3'))}}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
+            'NAME': os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3')),
+            'USER': os.getenv('DB_USER', ''),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', ''),
+            'PORT': os.getenv('DB_PORT', ''),
+        }
+=======
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
     }
 
 db_url = os.getenv('DATABASE_URL', '').strip()

@@ -29,11 +29,14 @@ export default function Integrations() {
     verify_token: "",
     waba_id: "",
   });
+<<<<<<< HEAD
   const [waSend, setWaSend] = useState({
     to_number: "",
     text: "",
     recipients_csv: "",
   });
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
   const webhookBase = useMemo(() => API_BASE_URL, []);
 
@@ -110,6 +113,7 @@ export default function Integrations() {
     }
   };
 
+<<<<<<< HEAD
   const checkWhatsAppConnection = async () => {
     try {
       const payload = await apiFetch<any>("/api/integrations/whatsapp/status/");
@@ -156,6 +160,8 @@ export default function Integrations() {
     }
   };
 
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
   return (
     <div className="p-4 md:p-8">
       <PageHeader title="Integrations" subtitle="Connect channels where your customers reach out" />
@@ -250,6 +256,7 @@ export default function Integrations() {
             <div className="space-y-2"><Label>Permanent Access Token</Label><Input type="password" value={waForm.access_token} onChange={(e) => setWaForm((s) => ({ ...s, access_token: e.target.value }))} placeholder="EAA..." /></div>
             <div className="space-y-2"><Label>Verify Token</Label><Input value={waForm.verify_token} onChange={(e) => setWaForm((s) => ({ ...s, verify_token: e.target.value }))} placeholder="verify_token" /></div>
             <div className="space-y-2"><Label>Webhook URL</Label><div className="flex gap-2"><Input readOnly value={`${webhookBase}/api/integrations/whatsapp/webhook/`} className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={() => copyText(`${webhookBase}/api/integrations/whatsapp/webhook/`)}><Copy className="w-4 h-4" /></Button></div></div>
+<<<<<<< HEAD
             <div className="flex gap-2">
               <Button className="gradient-primary border-0" onClick={saveWhatsApp}>Save Connection</Button>
               <Button variant="outline" onClick={checkWhatsAppConnection}>Check Connection</Button>
@@ -268,6 +275,9 @@ export default function Integrations() {
               <div className="space-y-2"><Label>Message</Label><Input value={waSend.text} onChange={(e) => setWaSend((s) => ({ ...s, text: e.target.value }))} placeholder="Promo or update message" /></div>
               <Button variant="outline" onClick={sendWhatsAppBulk}>Send Bulk</Button>
             </Card>
+=======
+            <Button className="gradient-primary border-0" onClick={saveWhatsApp}>Save Connection</Button>
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
           </TabsContent>
         </Tabs>
       </Card>

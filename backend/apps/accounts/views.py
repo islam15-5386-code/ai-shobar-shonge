@@ -19,6 +19,7 @@ from .models import UserProfile
 def _jwt_for_user(user: User) -> dict[str, str]:
     refresh = RefreshToken.for_user(user)
     return {'refresh': str(refresh), 'access': str(refresh.access_token)}
+<<<<<<< HEAD
 
 
 def _google_oauth_config() -> dict[str, str]:
@@ -38,6 +39,8 @@ def _google_missing_fields(cfg: dict[str, str]) -> list[str]:
     if not cfg.get('redirect_uri'):
         missing.append('GOOGLE_REDIRECT_URI')
     return missing
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a
 
 
 @api_view(['POST'])
@@ -164,6 +167,7 @@ def admin_overview(request):
             'businesses': Business.objects.count(),
         }
     )
+<<<<<<< HEAD
 
 
 @api_view(['GET'])
@@ -283,3 +287,5 @@ def google_dev_login(request):
     )
     tokens = _jwt_for_user(user)
     return HttpResponseRedirect(f"{frontend_callback}?access={tokens['access']}&refresh={tokens['refresh']}")
+=======
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a

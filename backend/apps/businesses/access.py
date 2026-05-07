@@ -31,6 +31,7 @@ def get_user_role_for_business(user, business: Business | None) -> str | None:
     return membership.role if membership else None
 
 
+<<<<<<< HEAD
 def is_super_admin(user) -> bool:
     return bool(user and user.is_authenticated and (user.is_superuser or user.is_staff))
 
@@ -85,3 +86,8 @@ def can_manage_team(user, business: Business | None) -> bool:
 def can_manage_business_data(user, business: Business | None) -> bool:
     role = get_user_role_for_business(user, business)
     return is_super_admin(user) or role in {"owner", "manager"}
+=======
+def can_manage_business_data(user, business: Business | None) -> bool:
+    role = get_user_role_for_business(user, business)
+    return role in {"owner", "manager"}
+>>>>>>> 1a3cceb383ca42cb29c58b955a27e37a6bea8e6a

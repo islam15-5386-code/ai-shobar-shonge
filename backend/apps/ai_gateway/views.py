@@ -8,6 +8,7 @@ from apps.businesses.models import Business
 from apps.businesses.access import get_user_business
 from apps.conversations.models import Conversation, Message
 from apps.conversations.realtime import publish_inbox_event
+from apps.customers.models import CustomerProfile
 from apps.tickets.models import Ticket
 from .ai_client import ai_respond
 from .models import AIInteractionLog, AIRequestLog, AIAssistantSetting
@@ -15,7 +16,7 @@ from .services import (
     confidence_from_similarity,
     detect_intent,
     detect_sentiment,
-    find_best_faq,
+    build_knowledge_context,
     is_bangla_text,
     should_escalate,
     should_escalate_with_settings,
@@ -48,13 +49,22 @@ def website_chat(request):
         return Response({'detail': 'business not found'}, status=status.HTTP_404_NOT_FOUND)
 
     ai_settings, _ = AIAssistantSetting.objects.get_or_create(business=business)
+    customer_external_id = str(customer.get('external_id', '')).strip() or visitor_id
+    customer_name = str(customer.get('name', '')).strip()
+    customer_obj, _ = CustomerProfile.objects.update_or_create(
+        business=business,
+        external_source='website',
+        external_id=customer_external_id,
+        defaults={'name': customer_name, 'metadata': customer if isinstance(customer, dict) else {}},
+    )
 
     conversation, _ = Conversation.objects.get_or_create(business=business, visitor_id=visitor_id)
     Message.objects.create(conversation=conversation, role='user', text=user_message)
 
     intent = detect_intent(user_message)
     sentiment = detect_sentiment(user_message)
-    match = find_best_faq(user_message, business.id)
+    knowledge = build_knowledge_context(user_message, business.id)
+    match = knowledge.faq_match
     confidence = confidence_from_similarity(match.score)
 
     forced_escalation = False
@@ -64,7 +74,15 @@ def website_chat(request):
     ai_call = {'ok': False, 'status': 'limit', 'latency_ms': 0, 'error': '', 'data': None}
 
     if ai_settings.auto_reply_enabled and limit_state['allowed']:
-        ai_call = ai_respond(user_message, business_id=business.id, locale='bn' if is_bangla_text(user_message) else 'en')
+        ai_call = ai_respond(
+            user_message,
+            business_id=business.id,
+            locale='bn' if is_bangla_text(user_message) else 'en',
+            vendor_id=knowledge.vendor_id,
+            order_id=knowledge.order_id,
+            customer_id=customer_obj.id,
+            context_snippets=knowledge.snippets,
+        )
 
     if ai_call.get('ok') and (ai_call.get('data') or {}).get('answer'):
         ai_response = ai_call['data']
@@ -107,6 +125,17 @@ def website_chat(request):
             reply = f"{reply} (Ticket #{ticket.id})"
         else:
             reply = f"I have created a support ticket (#{ticket.id}). A human agent will contact you soon."
+    elif confidence < float(ai_settings.confidence_threshold):
+        conversation.needs_human = True
+        conversation.save(update_fields=['needs_human', 'updated_at'])
+        ticket = Ticket.objects.create(
+            business=business,
+            conversation=conversation,
+            subject='Low-confidence website chatbot response',
+            details=f'Confidence: {confidence}. Intent: {intent}. Sentiment: {sentiment}.',
+        )
+        reply = f"I have created a support ticket (#{ticket.id}). A human agent will contact you soon."
+        escalation_reason = 'below_confidence_threshold'
 
     if is_bangla_text(user_message):
         reply = to_bangla_reply(reply)
