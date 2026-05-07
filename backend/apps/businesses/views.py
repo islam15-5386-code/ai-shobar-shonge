@@ -7,6 +7,8 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from apps.billing.models import Subscription, UsageRecord
+from .access import can_manage_business_profile, is_super_admin
 from .models import Business
 
 
@@ -96,11 +98,16 @@ def _ensure_business_for_user(user) -> Business:
 @api_view(['GET', 'POST', 'PATCH'])
 def business_setup(request):
     business = Business.objects.filter(owner=request.user).first()
+    if not business:
+        from apps.businesses.access import get_user_business
+        business = get_user_business(request.user)
 
     if request.method == 'GET':
         if not business:
             return Response({'detail': 'business not found'}, status=status.HTTP_404_NOT_FOUND)
         return Response(_serialize(business))
+    if business and not can_manage_business_profile(request.user, business):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     payload = {
         'name': request.data.get('name', ''),
@@ -134,6 +141,8 @@ def business_setup(request):
 @api_view(['POST'])
 def upload_logo(request):
     business = _ensure_business_for_user(request.user)
+    if not can_manage_business_profile(request.user, business):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     logo = request.FILES.get('logo')
     if not logo:
@@ -172,3 +181,44 @@ def _serialize(business: Business):
         'logo_url': business.logo.url if business.logo else '',
         'logo_extracted_data': business.logo_extracted_data or {},
     }
+
+
+@api_view(['GET'])
+def admin_businesses(request):
+    if not is_super_admin(request.user):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+    rows = Business.objects.all().order_by('-id')[:1000]
+    payload = []
+    for b in rows:
+        sub = Subscription.objects.filter(business=b).select_related('plan').first()
+        usage = UsageRecord.objects.filter(business=b, metric='messages').order_by('-id').first()
+        payload.append(
+            {
+                'id': b.id,
+                'name': b.name,
+                'slug': b.slug,
+                'owner_id': b.owner_id,
+                'is_active': bool(getattr(b, 'is_active', True)),
+                'subscription_plan': sub.plan.code if sub else None,
+                'subscription_status': sub.status if sub else None,
+                'latest_message_usage': usage.quantity if usage else 0,
+            }
+        )
+    return Response(payload)
+
+
+@api_view(['POST'])
+def admin_suspend_business(request, business_id):
+    if not is_super_admin(request.user):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+    business = Business.objects.filter(id=business_id).first()
+    if not business:
+        return Response({'detail': 'business not found'}, status=status.HTTP_404_NOT_FOUND)
+    suspend = bool(request.data.get('suspend', True))
+    if hasattr(business, 'is_active'):
+        business.is_active = not suspend
+        business.save(update_fields=['is_active'])
+    else:
+        business.handover_enabled = False if suspend else business.handover_enabled
+        business.save(update_fields=['handover_enabled'])
+    return Response({'id': business.id, 'suspended': suspend})

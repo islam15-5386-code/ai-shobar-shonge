@@ -1,4 +1,5 @@
 ﻿import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +35,7 @@ export const AuthShell = ({ title, subtitle, children, footer }: any) => (
           <h2 className="text-4xl font-bold leading-tight mb-4">"Support your customers faster with one unified platform."</h2>
           <p className="text-white/80">Rashed Hossain, Founder</p>
         </div>
-        <div className="text-xs text-white/60 relative">© 2026 Shobar Shonge · Bangladesh</div>
+        <div className="text-xs text-white/60 relative">2026 Shobar Shonge - Bangladesh</div>
       </div>
 
       <div className="flex items-center justify-center p-6 md:p-12 bg-transparent">
@@ -55,6 +56,40 @@ export const AuthShell = ({ title, subtitle, children, footer }: any) => (
 
 export default function Login() {
   const nav = useNavigate();
+  const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null);
+  const [googleDevFallback, setGoogleDevFallback] = useState(false);
+  const [googleMissing, setGoogleMissing] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadGoogleStatus = async () => {
+      try {
+        const status = await apiFetch<{ configured: boolean; missing: string[]; dev_fallback_available?: boolean }>("/api/accounts/google/status/");
+        setGoogleConfigured(Boolean(status.configured));
+        setGoogleDevFallback(Boolean(status.dev_fallback_available));
+        setGoogleMissing(status.missing || []);
+      } catch {
+        setGoogleConfigured(false);
+      }
+    };
+    loadGoogleStatus();
+  }, []);
+
+  const handleGoogleContinue = async () => {
+    try {
+      const payload = await apiFetch<{ auth_url: string }>("/api/accounts/google/start/");
+      if (!payload?.auth_url) {
+        toast.error("Google login is not configured yet.");
+        return;
+      }
+      window.location.href = payload.auth_url;
+    } catch (e: any) {
+      if (googleMissing.length) {
+        toast.error(`Google login not configured: ${googleMissing.join(", ")}`);
+      } else {
+        toast.error(e?.message || "Google login is not configured yet.");
+      }
+    }
+  };
 
   return (
     <AuthShell
@@ -97,7 +132,13 @@ export default function Login() {
           <Input name="password" type="password" placeholder="********" defaultValue="password123" required />
         </div>
         <Button type="submit" className="w-full gradient-primary border-0 shadow-glow h-11">Log in to Dashboard</Button>
-        <Button type="button" variant="outline" className="w-full h-11">Continue with Google</Button>
+        <Button type="button" variant="outline" className="w-full h-11" onClick={handleGoogleContinue} disabled={googleConfigured === false && !googleDevFallback}>Continue with Google</Button>
+        {googleConfigured === false && (
+          <p className="text-xs text-muted-foreground">
+            Google login setup required: {googleMissing.length ? googleMissing.join(", ") : "missing backend OAuth config"}.
+            {googleDevFallback ? " Dev fallback is enabled for local testing." : ""}
+          </p>
+        )}
       </form>
     </AuthShell>
   );

@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from apps.businesses.access import get_user_business
+from apps.businesses.access import get_user_business, is_agent, is_owner_or_manager
 from apps.conversations.models import Conversation
 from apps.conversations.realtime import publish_inbox_event
 from apps.marketplace.permissions import can_manage_marketplace, get_vendor_for_user
@@ -15,12 +15,17 @@ def tickets(request):
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
     vendor = get_vendor_for_user(request.user, business)
-    manage_all = can_manage_marketplace(request.user, business)
+    manage_all = is_owner_or_manager(request.user, business) or can_manage_marketplace(request.user, business)
 
     if request.method == 'GET':
         qs = Ticket.objects.filter(business=business)
-        if not manage_all and vendor:
-            qs = qs.filter(vendor=vendor)
+        if not manage_all:
+            if is_agent(request.user, business):
+                qs = qs.filter(assigned_agent=request.user)
+            elif vendor:
+                qs = qs.filter(vendor=vendor)
+            else:
+                qs = qs.none()
         if request.query_params.get('vendor'):
             qs = qs.filter(vendor_id=request.query_params.get('vendor'))
         if request.query_params.get('order'):
@@ -51,6 +56,8 @@ def tickets(request):
         ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
         if not ticket:
             return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+        if not manage_all and not (is_agent(request.user, business) and ticket.assigned_agent_id == request.user.id) and not (vendor and ticket.vendor_id == vendor.id):
+            return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         if 'status' in request.data:
             status_val = str(request.data.get('status'))
@@ -101,12 +108,17 @@ def ticket_kanban(request):
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
     vendor = get_vendor_for_user(request.user, business)
-    manage_all = can_manage_marketplace(request.user, business)
+    manage_all = is_owner_or_manager(request.user, business) or can_manage_marketplace(request.user, business)
 
     columns = {key: [] for key, _ in Ticket.STATUS_CHOICES}
     qs = Ticket.objects.filter(business=business)
-    if not manage_all and vendor:
-        qs = qs.filter(vendor=vendor)
+    if not manage_all:
+        if is_agent(request.user, business):
+            qs = qs.filter(assigned_agent=request.user)
+        elif vendor:
+            qs = qs.filter(vendor=vendor)
+        else:
+            qs = qs.none()
     for t in qs.order_by('-created_at'):
         columns[t.status].append(
             {
@@ -131,6 +143,9 @@ def ticket_comment(request, ticket_id):
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    vendor = get_vendor_for_user(request.user, business)
+    if not (is_owner_or_manager(request.user, business) or (is_agent(request.user, business) and ticket.assigned_agent_id == request.user.id) or (vendor and ticket.vendor_id == vendor.id)):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
     text = str(request.data.get('text', '')).strip()
     if not text:
         return Response({'detail': 'text is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -144,6 +159,8 @@ def ticket_assign(request, ticket_id):
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    if not (is_owner_or_manager(request.user, business) or is_agent(request.user, business)):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
     ticket.assigned_agent = request.user
     ticket.save(update_fields=['assigned_agent'])
     return Response({'id': ticket.id, 'assigned_agent_id': ticket.assigned_agent_id})
@@ -155,6 +172,9 @@ def ticket_status(request, ticket_id):
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    vendor = get_vendor_for_user(request.user, business)
+    if not (is_owner_or_manager(request.user, business) or (is_agent(request.user, business) and ticket.assigned_agent_id == request.user.id) or (vendor and ticket.vendor_id == vendor.id)):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
     val = str(request.data.get('status', '')).strip()
     valid = {x[0] for x in Ticket.STATUS_CHOICES}
     if val not in valid:
@@ -170,6 +190,8 @@ def ticket_priority(request, ticket_id):
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    if not is_owner_or_manager(request.user, business):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
     val = str(request.data.get('priority', '')).strip() or 'medium'
     ticket.priority = val
     ticket.save(update_fields=['priority'])
@@ -182,6 +204,9 @@ def ticket_resolve(request, ticket_id):
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    vendor = get_vendor_for_user(request.user, business)
+    if not (is_owner_or_manager(request.user, business) or (is_agent(request.user, business) and ticket.assigned_agent_id == request.user.id) or (vendor and ticket.vendor_id == vendor.id)):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
     ticket.status = 'resolved'
     ticket.save(update_fields=['status'])
     return Response({'id': ticket.id, 'status': ticket.status})
@@ -193,6 +218,8 @@ def human_handover(request, ticket_id):
     ticket = Ticket.objects.filter(id=ticket_id, business=business).select_related('conversation').first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
+    if not (is_owner_or_manager(request.user, business) or is_agent(request.user, business)):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
     if ticket.conversation:
         ticket.conversation.needs_human = True
         ticket.conversation.status = 'waiting_human'

@@ -29,6 +29,11 @@ export default function Integrations() {
     verify_token: "",
     waba_id: "",
   });
+  const [waSend, setWaSend] = useState({
+    to_number: "",
+    text: "",
+    recipients_csv: "",
+  });
 
   const webhookBase = useMemo(() => API_BASE_URL, []);
 
@@ -102,6 +107,52 @@ export default function Integrations() {
       await loadSetup();
     } catch {
       toast.error("WhatsApp save failed");
+    }
+  };
+
+  const checkWhatsAppConnection = async () => {
+    try {
+      const payload = await apiFetch<any>("/api/integrations/whatsapp/status/");
+      const label = payload?.display_phone_number || payload?.phone_number_id || "WhatsApp";
+      toast.success(`Connected: ${label}`);
+    } catch (e: any) {
+      toast.error(e?.message || "WhatsApp check failed");
+    }
+  };
+
+  const sendWhatsAppMessage = async () => {
+    if (!waSend.to_number.trim() || !waSend.text.trim()) {
+      toast.error("to number and message required");
+      return;
+    }
+    try {
+      await apiFetch("/api/integrations/whatsapp/send/", {
+        method: "POST",
+        body: JSON.stringify({ to_number: waSend.to_number.trim(), text: waSend.text.trim() }),
+      });
+      toast.success("WhatsApp message sent");
+    } catch (e: any) {
+      toast.error(e?.message || "Send failed");
+    }
+  };
+
+  const sendWhatsAppBulk = async () => {
+    const recipients = waSend.recipients_csv
+      .split(/[,\n]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (!recipients.length || !waSend.text.trim()) {
+      toast.error("recipients and message required");
+      return;
+    }
+    try {
+      const res = await apiFetch<any>("/api/integrations/whatsapp/bulk-send/", {
+        method: "POST",
+        body: JSON.stringify({ recipients, text: waSend.text.trim() }),
+      });
+      toast.success(`Bulk done: ${res?.sent || 0} sent, ${res?.failed || 0} failed`);
+    } catch (e: any) {
+      toast.error(e?.message || "Bulk send failed");
     }
   };
 
@@ -199,7 +250,24 @@ export default function Integrations() {
             <div className="space-y-2"><Label>Permanent Access Token</Label><Input type="password" value={waForm.access_token} onChange={(e) => setWaForm((s) => ({ ...s, access_token: e.target.value }))} placeholder="EAA..." /></div>
             <div className="space-y-2"><Label>Verify Token</Label><Input value={waForm.verify_token} onChange={(e) => setWaForm((s) => ({ ...s, verify_token: e.target.value }))} placeholder="verify_token" /></div>
             <div className="space-y-2"><Label>Webhook URL</Label><div className="flex gap-2"><Input readOnly value={`${webhookBase}/api/integrations/whatsapp/webhook/`} className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={() => copyText(`${webhookBase}/api/integrations/whatsapp/webhook/`)}><Copy className="w-4 h-4" /></Button></div></div>
-            <Button className="gradient-primary border-0" onClick={saveWhatsApp}>Save Connection</Button>
+            <div className="flex gap-2">
+              <Button className="gradient-primary border-0" onClick={saveWhatsApp}>Save Connection</Button>
+              <Button variant="outline" onClick={checkWhatsAppConnection}>Check Connection</Button>
+            </div>
+
+            <Card className="p-4 space-y-3">
+              <h4 className="font-semibold">Send WhatsApp Message</h4>
+              <div className="space-y-2"><Label>To Number (with country code)</Label><Input value={waSend.to_number} onChange={(e) => setWaSend((s) => ({ ...s, to_number: e.target.value }))} placeholder="8801XXXXXXXXX" /></div>
+              <div className="space-y-2"><Label>Message</Label><Input value={waSend.text} onChange={(e) => setWaSend((s) => ({ ...s, text: e.target.value }))} placeholder="Hello from Shobar Shonge" /></div>
+              <Button onClick={sendWhatsAppMessage}>Send Single</Button>
+            </Card>
+
+            <Card className="p-4 space-y-3">
+              <h4 className="font-semibold">Bulk Send</h4>
+              <div className="space-y-2"><Label>Recipients (comma or new line)</Label><Input value={waSend.recipients_csv} onChange={(e) => setWaSend((s) => ({ ...s, recipients_csv: e.target.value }))} placeholder="8801XXXXXXXXX,8801YYYYYYYYY" /></div>
+              <div className="space-y-2"><Label>Message</Label><Input value={waSend.text} onChange={(e) => setWaSend((s) => ({ ...s, text: e.target.value }))} placeholder="Promo or update message" /></div>
+              <Button variant="outline" onClick={sendWhatsAppBulk}>Send Bulk</Button>
+            </Card>
           </TabsContent>
         </Tabs>
       </Card>

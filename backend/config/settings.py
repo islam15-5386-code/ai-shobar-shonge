@@ -66,11 +66,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+channel_backend = os.getenv('CHANNEL_LAYER_BACKEND', '').strip().lower()
+redis_url = os.getenv('REDIS_URL', os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')).strip()
+if channel_backend == 'inmemory':
+    CHANNEL_LAYERS = {'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [redis_url]},
+        }
     }
-}
 
 db_url = os.getenv('DATABASE_URL', '').strip()
 if db_url:

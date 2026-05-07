@@ -8,7 +8,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.businesses.models import Business
-from apps.businesses.access import get_user_business
+from apps.businesses.access import can_manage_billing, get_user_business, is_super_admin
 from .models import Invoice, PricingPlan, Subscription, UsageRecord
 
 
@@ -53,6 +53,8 @@ def pricing_plans(request):
             ]
         )
 
+    if not is_super_admin(request.user):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
     code = str(request.data.get('code', '')).strip()
     name = str(request.data.get('name', '')).strip()
     if not code or not name:
@@ -73,6 +75,8 @@ def subscription(request):
     business = _get_business_for_user(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.method in ['POST', 'PATCH'] and not can_manage_billing(request.user, business):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     sub = Subscription.objects.filter(business=business).select_related('plan').first()
     if request.method == 'GET':
@@ -189,6 +193,8 @@ def invoices(request):
     business = _get_business_for_user(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    if request.method in ['POST', 'PATCH'] and not can_manage_billing(request.user, business):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'GET':
         data = []
@@ -245,6 +251,8 @@ def sandbox_checkout(request):
     business = _get_business_for_user(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not can_manage_billing(request.user, business):
+        return Response({'detail': 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     plan_id = request.data.get('plan_id')
     payment_method = str(request.data.get('payment_method', 'sandbox_card')).strip() or 'sandbox_card'
