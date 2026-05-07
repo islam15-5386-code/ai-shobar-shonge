@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,13 +15,19 @@ type ConversationMessage = {
   id: number;
   role: string;
   text: string;
+  sentiment?: string;
   created_at: string;
 };
 
 type ConversationItem = {
   id: number;
   visitor_id: string;
+  customer_name?: string;
+  channel?: string;
   needs_human: boolean;
+  resolved_by?: "AI" | "Human";
+  last_message?: string;
+  last_sentiment?: "positive" | "neutral" | "negative" | string;
   updated_at: string;
   messages: ConversationMessage[];
 };
@@ -75,16 +81,28 @@ export default function History() {
   const [q, setQ] = useState("");
   const [channel, setChannel] = useState("all");
   const [sentiment, setSentiment] = useState("all");
+  const [loading, setLoading] = useState(false);
 
   const loadHistory = async () => {
     try {
-      const data = await apiFetch<ConversationItem[]>("/api/conversations/history/");
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (q.trim()) params.set("q", q.trim());
+      if (channel !== "all") params.set("channel", channel);
+      if (sentiment !== "all") params.set("sentiment", sentiment);
+      const suffix = params.toString() ? `?${params.toString()}` : "";
+      const data = await apiFetch<ConversationItem[]>(`/api/conversations/history/${suffix}`);
       const mapped: HistoryRow[] = (data || []).map((c) => {
-        const last = [...(c.messages || [])].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        )[0];
-        const customer = toCustomerName(c.visitor_id);
-        const sentimentGuess: "positive" | "neutral" | "negative" = c.needs_human ? "negative" : "neutral";
+        const last = c.last_message
+          ? { text: c.last_message }
+          : [...(c.messages || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+        const customer = c.customer_name || toCustomerName(c.visitor_id);
+        const s =
+          c.last_sentiment === "positive" || c.last_sentiment === "neutral" || c.last_sentiment === "negative"
+            ? c.last_sentiment
+            : c.needs_human
+              ? "negative"
+              : "neutral";
         return {
           id: c.id,
           customer,
@@ -95,31 +113,25 @@ export default function History() {
             .join("")
             .toUpperCase(),
           message: last?.text || "No messages yet",
-          channel: guessChannel(c.visitor_id),
-          sentiment: sentimentGuess,
-          resolvedBy: c.needs_human ? "Human" : "AI",
+          channel: c.channel || guessChannel(c.visitor_id),
+          sentiment: s,
+          resolvedBy: c.resolved_by || (c.needs_human ? "Human" : "AI"),
           updatedAt: c.updated_at,
         };
       });
       setRows(mapped);
     } catch {
       toast.error("History load failed. Please login first.");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadHistory();
-  }, []);
+  }, [q, channel, sentiment]);
 
-  const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      const qq = q.trim().toLowerCase();
-      const okQ = !qq || r.customer.toLowerCase().includes(qq) || r.message.toLowerCase().includes(qq);
-      const okC = channel === "all" || r.channel.toLowerCase() === channel;
-      const okS = sentiment === "all" || r.sentiment === sentiment;
-      return okQ && okC && okS;
-    });
-  }, [rows, q, channel, sentiment]);
+  const filtered = useMemo(() => rows, [rows]);
 
   const exportCsv = () => {
     if (!filtered.length) {
@@ -158,7 +170,7 @@ export default function History() {
       <Card className="p-4 mb-4 flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by customer name..." className="pl-9 bg-muted/50 border-0" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input placeholder="Search by customer/message..." className="pl-9 bg-muted/50 border-0" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={channel} onValueChange={setChannel}>
           <SelectTrigger className="w-40"><SelectValue placeholder="Channel" /></SelectTrigger>
@@ -212,9 +224,17 @@ export default function History() {
                 <TableCell className="text-xs text-muted-foreground">{relativeTime(r.updatedAt)}</TableCell>
               </TableRow>
             ))}
+            {!loading && filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
+                  No conversation history found for current filters.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </Card>
     </div>
   );
 }
+

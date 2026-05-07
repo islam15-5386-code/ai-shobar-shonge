@@ -21,7 +21,7 @@ type FAQItem = {
   embedding_status?: string;
 };
 
-const emptyForm = { question: "", answer: "", category: "", language: "Bangla" };
+const emptyForm = { question: "", answer: "", category: "", language: "bn" };
 
 export default function FAQs() {
   const [items, setItems] = useState<FAQItem[]>([]);
@@ -63,18 +63,19 @@ export default function FAQs() {
       await apiFetch("/api/faqs/", {
         method: "POST",
         body: JSON.stringify({
-          question: form.question,
-          answer: form.answer,
-          category: form.category,
-          language: form.language,
+          question: form.question.trim(),
+          answer: form.answer.trim(),
+          category: form.category.trim(),
+          language: (form.language || "bn").toLowerCase().startsWith("en") ? "en" : "bn",
         }),
       });
       toast.success("FAQ added");
       setOpenAdd(false);
       setForm(emptyForm);
       await loadFaqs();
-    } catch {
-      toast.error("Add FAQ failed");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Add FAQ failed";
+      toast.error(message);
     } finally {
       setSaving(false);
     }

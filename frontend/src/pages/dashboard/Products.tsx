@@ -78,12 +78,12 @@ export default function Products() {
       await apiFetch("/api/products/", {
         method: "POST",
         body: JSON.stringify({
-          name: form.name,
-          description: form.description,
+          name: form.name.trim(),
+          description: form.description.trim(),
           price: Number(form.price),
           currency: "BDT",
-          stock_status: form.stock_status,
-          return_policy: form.return_policy,
+          stock_status: (form.stock_status || "in_stock").trim().toLowerCase(),
+          return_policy: form.return_policy.trim(),
           is_active: true,
         }),
       });
@@ -91,8 +91,9 @@ export default function Products() {
       setOpenAdd(false);
       setForm(emptyForm);
       await loadProducts();
-    } catch {
-      toast.error("Add product failed");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Add product failed";
+      toast.error(message);
     } finally {
       setSaving(false);
     }

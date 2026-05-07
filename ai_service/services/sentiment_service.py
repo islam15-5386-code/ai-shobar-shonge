@@ -1,5 +1,5 @@
 class SentimentService:
-    NEGATIVE = ["bad", "angry", "terrible", "hate", "worst", "not working", "frustrated"]
+    NEGATIVE = ["bad", "angry", "terrible", "hate", "worst", "not working", "frustrated", "complaint", "damaged", "খারাপ", "সমস্যা"]
     POSITIVE = ["great", "thanks", "awesome", "good", "love", "helpful"]
 
     def analyze(self, text: str) -> tuple[str, float]:

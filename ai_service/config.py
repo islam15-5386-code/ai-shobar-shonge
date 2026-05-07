@@ -22,6 +22,8 @@ class Settings:
     cuda_device: str = os.getenv("CUDA_DEVICE", "cuda:0")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    model_mode: str = os.getenv("MODEL_MODE", "dev_rule_based")
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///../backend/db.sqlite3")
 
 
 settings = Settings()

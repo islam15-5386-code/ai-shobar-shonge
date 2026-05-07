@@ -60,8 +60,9 @@ export default function AISettings() {
         body: JSON.stringify(settings),
       });
       toast.success("AI settings saved");
-    } catch {
-      toast.error("Failed to save AI settings");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save AI settings";
+      toast.error(message.includes("detail") ? message : "Failed to save AI settings");
     } finally {
       setSaving(false);
     }

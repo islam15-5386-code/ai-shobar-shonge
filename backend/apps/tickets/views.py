@@ -2,30 +2,48 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from apps.businesses.models import Business
+from apps.businesses.access import get_user_business
 from apps.conversations.models import Conversation
 from apps.conversations.realtime import publish_inbox_event
+from apps.marketplace.permissions import can_manage_marketplace, get_vendor_for_user
 from .models import Ticket, TicketComment
 
 
 @api_view(['GET', 'POST', 'PATCH'])
 def tickets(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    vendor = get_vendor_for_user(request.user, business)
+    manage_all = can_manage_marketplace(request.user, business)
 
     if request.method == 'GET':
+        qs = Ticket.objects.filter(business=business)
+        if not manage_all and vendor:
+            qs = qs.filter(vendor=vendor)
+        if request.query_params.get('vendor'):
+            qs = qs.filter(vendor_id=request.query_params.get('vendor'))
+        if request.query_params.get('order'):
+            qs = qs.filter(order_id=request.query_params.get('order'))
+        if request.query_params.get('product'):
+            qs = qs.filter(product_id=request.query_params.get('product'))
+        if request.query_params.get('assignment_type'):
+            qs = qs.filter(assignment_type=request.query_params.get('assignment_type'))
         return Response([
             {
                 'id': t.id,
                 'subject': t.subject,
                 'details': t.details,
                 'status': t.status,
+                'vendor_id': t.vendor_id,
+                'order_id': t.order_id,
+                'product_id': t.product_id,
+                'assignment_type': t.assignment_type,
                 'conversation_id': t.conversation_id,
                 'assigned_agent_id': t.assigned_agent_id,
                 'created_at': t.created_at,
             }
-            for t in Ticket.objects.filter(business=business).order_by('-created_at')
+            for t in qs.order_by('-created_at')
         ])
 
     if request.method == 'PATCH':
@@ -62,6 +80,10 @@ def tickets(request):
     ticket = Ticket.objects.create(
         business=business,
         conversation=conversation,
+        vendor_id=request.data.get('vendor_id') or (conversation.vendor_id if conversation else None),
+        order_id=request.data.get('order_id') or (conversation.order_id if conversation else None),
+        product_id=request.data.get('product_id') or (conversation.product_id if conversation else None),
+        assignment_type=str(request.data.get('assignment_type', 'marketplace')),
         subject=subject,
         details=details,
         assigned_agent=request.user if bool(request.data.get('assign_to_me')) else None,
@@ -75,17 +97,26 @@ def tickets(request):
 
 @api_view(['GET'])
 def ticket_kanban(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    vendor = get_vendor_for_user(request.user, business)
+    manage_all = can_manage_marketplace(request.user, business)
 
     columns = {key: [] for key, _ in Ticket.STATUS_CHOICES}
-    for t in Ticket.objects.filter(business=business).order_by('-created_at'):
+    qs = Ticket.objects.filter(business=business)
+    if not manage_all and vendor:
+        qs = qs.filter(vendor=vendor)
+    for t in qs.order_by('-created_at'):
         columns[t.status].append(
             {
                 'id': t.id,
                 'subject': t.subject,
                 'details': t.details,
+                'vendor_id': t.vendor_id,
+                'order_id': t.order_id,
+                'product_id': t.product_id,
+                'assignment_type': t.assignment_type,
                 'conversation_id': t.conversation_id,
                 'assigned_agent_id': t.assigned_agent_id,
                 'created_at': t.created_at,
@@ -96,7 +127,7 @@ def ticket_kanban(request):
 
 @api_view(['POST'])
 def ticket_comment(request, ticket_id):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -109,7 +140,7 @@ def ticket_comment(request, ticket_id):
 
 @api_view(['POST'])
 def ticket_assign(request, ticket_id):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -120,7 +151,7 @@ def ticket_assign(request, ticket_id):
 
 @api_view(['POST'])
 def ticket_status(request, ticket_id):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -135,7 +166,7 @@ def ticket_status(request, ticket_id):
 
 @api_view(['POST'])
 def ticket_priority(request, ticket_id):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -147,7 +178,7 @@ def ticket_priority(request, ticket_id):
 
 @api_view(['POST'])
 def ticket_resolve(request, ticket_id):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     ticket = Ticket.objects.filter(id=ticket_id, business=business).first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -158,7 +189,7 @@ def ticket_resolve(request, ticket_id):
 
 @api_view(['POST'])
 def human_handover(request, ticket_id):
-    business = Business.objects.filter(owner=request.user).first()
+    business = get_user_business(request.user)
     ticket = Ticket.objects.filter(id=ticket_id, business=business).select_related('conversation').first()
     if not ticket:
         return Response({'detail': 'ticket not found'}, status=status.HTTP_404_NOT_FOUND)

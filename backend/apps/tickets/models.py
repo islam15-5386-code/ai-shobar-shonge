@@ -12,6 +12,10 @@ class Ticket(models.Model):
     )
 
     business = models.ForeignKey('businesses.Business', on_delete=models.CASCADE, related_name='tickets')
+    vendor = models.ForeignKey('marketplace.Vendor', on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets')
+    order = models.ForeignKey('marketplace.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets')
+    product = models.ForeignKey('products.Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets')
+    assignment_type = models.CharField(max_length=20, default='marketplace')
     conversation = models.ForeignKey('conversations.Conversation', on_delete=models.SET_NULL, null=True, blank=True)
     subject = models.CharField(max_length=255)
     details = models.TextField(blank=True)

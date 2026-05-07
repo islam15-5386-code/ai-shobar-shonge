@@ -3,6 +3,7 @@ from django.db import models
 
 class FAQ(models.Model):
     business = models.ForeignKey('businesses.Business', on_delete=models.CASCADE, related_name='faqs')
+    vendor = models.ForeignKey('marketplace.Vendor', on_delete=models.CASCADE, null=True, blank=True, related_name='faqs')
     question = models.CharField(max_length=500)
     answer = models.TextField()
     category = models.CharField(max_length=120, blank=True)

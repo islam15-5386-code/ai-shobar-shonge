@@ -12,7 +12,7 @@ class ChatResponse(BaseModel):
     intent: str
     sentiment: str
     confidence: float
-    context: list[str] = []
+    context: list[str] = Field(default_factory=list)
 
 
 class IntentRequest(BaseModel):
@@ -54,6 +54,13 @@ class VoiceResponse(BaseModel):
 class AIRespondRequest(BaseModel):
     message: str = Field(..., min_length=1)
     business_id: int | None = None
+    vendor_id: int | None = None
+    customer_id: int | None = None
+    order_id: int | None = None
+    business_context: dict = Field(default_factory=dict)
+    vendor_context: dict = Field(default_factory=dict)
+    order_context: dict = Field(default_factory=dict)
+    product_context: dict = Field(default_factory=dict)
     locale: str = "en"
 
 
@@ -63,7 +70,11 @@ class AIRespondResponse(BaseModel):
     intent: str
     sentiment: str
     should_escalate: bool = False
-    sources: list[str] = []
+    vendor_id: int | None = None
+    order_id: int | None = None
+    product_id: int | None = None
+    ticket_assignment_type: str = "marketplace"
+    sources: list[str] = Field(default_factory=list)
     model_name: str = "mock"
 
 

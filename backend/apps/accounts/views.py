@@ -19,6 +19,8 @@ def _jwt_for_user(user: User) -> dict[str, str]:
 def register(request):
     username = request.data.get('username', '').strip()
     email = request.data.get('email', '').strip()
+    if not username and email:
+        username = email
     password = request.data.get('password', '')
     full_name = request.data.get('full_name', '').strip()
     phone = request.data.get('phone', '').strip()
@@ -63,6 +65,8 @@ def register(request):
 @permission_classes([AllowAny])
 def login(request):
     username = request.data.get('username', '').strip()
+    if not username:
+        username = request.data.get('email', '').strip()
     password = request.data.get('password', '')
 
     user = User.objects.filter(username=username).first()
@@ -98,9 +102,20 @@ def logout(request):
     return Response({'detail': 'logged out'})
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'PATCH'])
 def me(request):
     profile = getattr(request.user, 'profile', None)
+    if request.method in ['PUT', 'PATCH']:
+        full_name = str(request.data.get('full_name', profile.full_name if profile else '')).strip()
+        phone = str(request.data.get('phone', profile.phone if profile else '')).strip()
+        if profile:
+            profile.full_name = full_name
+            profile.phone = phone
+            profile.save(update_fields=['full_name', 'phone'])
+        else:
+            UserProfile.objects.create(user=request.user, full_name=full_name, phone=phone, role='owner', is_active=True)
+        profile = getattr(request.user, 'profile', None)
+
     return Response(
         {
             'id': request.user.id,

@@ -31,57 +31,73 @@ const serviceFeatures = [
     icon: Bot,
     title: "Bangla + English AI Reply",
     desc: "Auto-reply customers with better intent understanding and confidence-aware escalation.",
+    route: "/dashboard/ai-settings",
+    points: ["Auto reply toggle + confidence threshold", "Bangla/English tone control", "Escalation rules to human agents"],
   },
   {
     icon: MessageSquare,
     title: "Unified Live Inbox",
     desc: "Handle customer chats from one place and reduce missed conversation response time.",
+    route: "/dashboard/inbox",
+    points: ["Website, Messenger, WhatsApp conversations", "Take over, assign, resolve actions", "Per-customer chat context and timeline"],
   },
   {
     icon: Ticket,
     title: "Ticket Workflow",
     desc: "Create, assign, prioritize, and track tickets with status visibility for your whole team.",
+    route: "/dashboard/tickets",
+    points: ["Kanban-style status tracking", "Priority and assignment controls", "Auto ticket from AI escalation"],
   },
   {
     icon: BookOpen,
     title: "FAQ Knowledge Base",
     desc: "Store reusable answers so agents and AI can serve customers faster and more consistently.",
+    route: "/dashboard/faqs",
+    points: ["Add/edit/delete FAQ entries", "Category + language-based organization", "Bulk import and AI re-index support"],
   },
   {
     icon: Plug,
     title: "Integrations",
     desc: "Connect tools and channels with minimal setup to keep operations centralized.",
+    route: "/dashboard/integrations",
+    points: ["Website widget configuration", "Messenger/WhatsApp webhook setup", "Channel status and credentials overview"],
   },
   {
     icon: History,
     title: "Action History",
     desc: "Review team activity and support events to improve quality and accountability.",
+    route: "/dashboard/history",
+    points: ["Conversation history records", "Search and channel filters", "CSV export for reporting"],
   },
   {
     icon: CreditCard,
     title: "Billing Control",
     desc: "Manage plans and usage clearly with one billing section in your dashboard.",
+    route: "/dashboard/billing",
+    points: ["Plan comparison and current plan", "Usage meter and limits", "Sandbox payment checkout flow"],
   },
   {
     icon: Settings,
     title: "AI Settings",
     desc: "Tune behavior, tone, and automation rules to match your service process.",
+    route: "/dashboard/ai-settings",
+    points: ["System prompt and reply style", "Confidence-based handover", "Refund/negative sentiment rules"],
   },
 ];
 
 const systemModules = [
-  { title: "Overview Dashboard", route: "/dashboard", icon: LayoutDashboard, desc: "KPIs, stats, and system health in one summary screen." },
-  { title: "Live Inbox", route: "/dashboard/inbox", icon: MessageSquare, desc: "Real-time incoming conversations and response handling." },
-  { title: "Tickets", route: "/dashboard/tickets", icon: Ticket, desc: "Issue management with priority and progress tracking." },
-  { title: "FAQ Knowledge", route: "/dashboard/faqs", icon: BookOpen, desc: "Central library of support answers and reusable content." },
-  { title: "Products", route: "/dashboard/products", icon: Package, desc: "Product/service references used inside support workflows." },
-  { title: "Integrations", route: "/dashboard/integrations", icon: Plug, desc: "Connect external platforms and enable channel sync." },
-  { title: "AI Settings", route: "/dashboard/ai-settings", icon: Bot, desc: "Configure intelligence and AI-driven automation behavior." },
-  { title: "History", route: "/dashboard/history", icon: History, desc: "Audit activity log for actions and operational events." },
-  { title: "Billing", route: "/dashboard/billing", icon: CreditCard, desc: "Manage plan, payment, and usage from one place." },
-  { title: "Onboarding", route: "/dashboard/onboarding", icon: Sparkles, desc: "Step-by-step initial setup for fast team activation." },
-  { title: "Login", route: "/login", icon: Headphones, desc: "Secure access point for team members." },
-  { title: "Register", route: "/register", icon: Users, desc: "Create a new account and start onboarding." },
+  { title: "Overview Dashboard", icon: LayoutDashboard, desc: "KPIs, stats, and system health in one summary screen.", points: ["Conversation + ticket totals", "AI performance snapshot", "Usage and plan visibility"] },
+  { title: "Live Inbox", icon: MessageSquare, desc: "Real-time incoming conversations and response handling.", points: ["Website/Messenger/WhatsApp chats", "Take over / assign / resolve", "Customer context panel"] },
+  { title: "Tickets", icon: Ticket, desc: "Issue management with priority and progress tracking.", points: ["Kanban ticket pipeline", "Priority + owner assignment", "Human handover support"] },
+  { title: "FAQ Knowledge", icon: BookOpen, desc: "Central library of support answers and reusable content.", points: ["Create/update/delete FAQ", "Category + language control", "Re-index for AI"] },
+  { title: "Products", icon: Package, desc: "Product/service references used inside support workflows.", points: ["Vendor/business product catalog", "Stock, price, policy fields", "AI product-aware replies"] },
+  { title: "Integrations", icon: Plug, desc: "Connect external platforms and enable channel sync.", points: ["Widget setup keys", "Messenger webhook config", "WhatsApp Cloud API config"] },
+  { title: "AI Settings", icon: Bot, desc: "Configure intelligence and AI-driven automation behavior.", points: ["Auto-reply switch", "Confidence threshold", "Escalation rules"] },
+  { title: "History", icon: History, desc: "Audit activity log for actions and operational events.", points: ["Conversation history table", "Filter by channel/sentiment", "CSV export"] },
+  { title: "Billing", icon: CreditCard, desc: "Manage plan, payment, and usage from one place.", points: ["Current subscription", "Usage meters", "Sandbox checkout flow"] },
+  { title: "Onboarding", icon: Sparkles, desc: "Step-by-step initial setup for fast team activation.", points: ["Business setup", "Category selection", "Starter config"] },
+  { title: "Login", icon: Headphones, desc: "Secure access point for team members.", points: ["JWT-based authentication", "Role-based access", "Session start"] },
+  { title: "Register", icon: Users, desc: "Create a new account and start onboarding.", points: ["Create user + business", "Owner role bootstrap", "Start setup flow"] },
 ];
 
 const testimonials = [
@@ -156,25 +172,13 @@ export default function Landing() {
             </div>
           </div>
 
-          <Card className="p-5 bg-white/90 border-slate-200 shadow-xl rotate-[-4deg] lg:translate-x-6">
-            <div className="rounded-lg bg-slate-100 p-4 space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="h-16 rounded bg-white" />
-                <div className="h-16 rounded bg-white" />
-                <div className="h-16 rounded bg-white" />
-              </div>
-              <div className="h-40 rounded bg-gradient-to-br from-[#e9edf8] to-[#f3f6ff] p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-semibold">Support Performance</span>
-                  <Badge className="bg-[#0f766e]">Active</Badge>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="h-20 rounded bg-white" />
-                  <div className="h-20 rounded bg-white" />
-                  <div className="h-20 rounded bg-white" />
-                </div>
-              </div>
-            </div>
+          <Card className="p-3 bg-white/90 border-slate-200 shadow-xl rotate-[-4deg] lg:translate-x-6 overflow-hidden">
+            <img
+              src="/supportbond-preview.svg"
+              alt="SupportBond AI dashboard preview"
+              className="w-full h-auto rounded-md"
+              loading="lazy"
+            />
           </Card>
         </div>
       </section>
@@ -185,14 +189,40 @@ export default function Landing() {
             <h2 className="text-4xl font-black">Our Services</h2>
             <p className="text-slate-600 mt-3">Everything needed to run your complete customer support workflow.</p>
           </div>
+          <div className="relative mb-5 rounded-2xl border border-slate-200 bg-gradient-to-r from-[#fff7fb] via-[#f9fbff] to-[#f4f8ff] p-4 md:p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-semibold text-[#933f67]">Tab Guide</div>
+                <div className="text-sm text-slate-600">Each card explains what that dashboard tab does and lets you open it instantly.</div>
+              </div>
+              <div className="text-xs text-slate-500">Detailed module coverage for onboarding and demos</div>
+            </div>
+          </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {serviceFeatures.map((feature) => (
-              <Card key={feature.title} className="p-5 border-slate-200 bg-white">
-                <div className="w-10 h-10 rounded-md bg-slate-950 text-white grid place-items-center mb-4">
+              <Card
+                key={feature.title}
+                className="group p-5 border-slate-200 bg-white hover:border-[#d9b4c8] hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="w-10 h-10 rounded-md bg-slate-950 text-white grid place-items-center mb-4 group-hover:bg-[#933f67] transition-colors">
                   <feature.icon className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-lg mb-2">{feature.title}</h3>
+                <h3 className="font-bold text-lg mb-2 leading-tight">{feature.title}</h3>
                 <p className="text-sm text-slate-600">{feature.desc}</p>
+                <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
+                  {feature.points.map((point) => (
+                    <div key={point} className="text-xs text-slate-700 flex items-start gap-1.5">
+                      <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-[#933f67]" />
+                      <span>{point}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  to={feature.route}
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#933f67] hover:text-[#7d3156]"
+                >
+                  Open Tab <ArrowRight className="w-4 h-4" />
+                </Link>
               </Card>
             ))}
           </div>
@@ -204,7 +234,7 @@ export default function Landing() {
           <div className="text-center mb-10">
             <div className="text-6xl font-black text-[#933f67]">Full System</div>
             <h2 className="text-4xl font-black">All Functional Modules Are Live</h2>
-            <p className="text-slate-600 mt-3">Open any module below to use the real page in your current app.</p>
+            <p className="text-slate-600 mt-3">Demo preview only. Login is required to access real modules.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {systemModules.map((module) => (
@@ -213,10 +243,21 @@ export default function Landing() {
                   <div className="w-10 h-10 rounded-md bg-slate-900 text-white grid place-items-center">
                     <module.icon className="w-5 h-5" />
                   </div>
-                  <Link to={module.route} className="text-sm underline text-slate-600 hover:text-[#933f67]">Open Module</Link>
+                  <Badge variant="outline" className="text-xs">Demo Screenshot</Badge>
                 </div>
                 <h3 className="font-semibold text-lg mt-4">{module.title}</h3>
                 <p className="text-slate-600 text-sm mt-2">{module.desc}</p>
+                <div className="mt-3 space-y-1.5">
+                  {module.points.map((point) => (
+                    <div key={point} className="text-xs text-slate-700 flex items-start gap-1.5">
+                      <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-[#933f67]" />
+                      <span>{point}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 rounded-md border border-slate-200 bg-white p-2">
+                  <img src="/supportbond-preview.svg" alt={`${module.title} demo screenshot`} className="w-full rounded" loading="lazy" />
+                </div>
               </Card>
             ))}
           </div>

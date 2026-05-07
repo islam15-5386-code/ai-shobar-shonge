@@ -31,6 +31,21 @@ def health(request):
     return JsonResponse({'app': 'integrations', 'status': 'ok'})
 
 
+@api_view(['GET'])
+def integrations_summary(request):
+    business = Business.objects.filter(owner=request.user).first()
+    if not business:
+        return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    m = MessengerIntegration.objects.filter(business=business).first()
+    w = WhatsAppIntegration.objects.filter(business=business).first()
+    return Response(
+        {
+            'messenger': {'connected': bool(m and m.is_active), 'page_id': m.page_id if m else ''},
+            'whatsapp': {'connected': bool(w and w.is_active), 'phone_number_id': w.phone_number_id if w else ''},
+        }
+    )
+
+
 @api_view(['POST', 'GET'])
 def messenger_setup(request):
     business = Business.objects.filter(owner=request.user).first()

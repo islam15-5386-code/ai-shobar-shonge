@@ -15,6 +15,7 @@ from models import (
 )
 from services import IntentService, RAGService, SentimentService
 from services.runtime import providers
+from config import settings
 
 router = APIRouter()
 
@@ -31,7 +32,7 @@ def ai_health() -> dict:
         cuda_available = bool(torch.cuda.is_available())
     except Exception:
         cuda_available = False
-    return {"status": "ok", "ai_mode": providers.mode, "cuda_available": cuda_available}
+    return {"status": "ok", "ai_mode": providers.mode, "cuda_available": cuda_available, "model_mode": settings.model_mode}
 
 
 @router.post("/respond", response_model=AIRespondResponse)
@@ -40,15 +41,26 @@ def respond(payload: AIRespondRequest) -> AIRespondResponse:
     sentiment, sent_score = sentiment_service.analyze(payload.message)
     docs = rag_service.retrieve(payload.message)
     sources = [str(d.get("text", "")) for d in docs if d.get("text")]
-    answer = providers.llm.generate_reply(payload.message, context=sources, locale=payload.locale)
+    is_bangla = any("\u0980" <= ch <= "\u09FF" for ch in payload.message)
+    locale = payload.locale or ("bn" if is_bangla else "en")
+    answer = providers.llm.generate_reply(payload.message, context=sources, locale=locale)
     confidence = round((intent_conf + sent_score) / 2, 3)
+    vendor_hint = payload.vendor_id
+    order_hint = payload.order_id
+    product_hint = payload.product_context.get("product_id") if isinstance(payload.product_context, dict) else None
     should_escalate = confidence < 0.6 or intent in ["refund", "human_handover"] or sentiment == "negative"
+    assignment_type = "vendor" if vendor_hint else "marketplace"
 
     if should_escalate and not sources:
-        if payload.locale.lower().startswith("bn"):
-            answer = "আমি নিশ্চিত উত্তর দিতে পারছি না। একজন মানব সাপোর্ট এজেন্ট শীঘ্রই সহায়তা করবে।"
+        if locale.lower().startswith("bn"):
+            answer = "জি, আমি আপনার প্রশ্নটি পেয়েছি। আমাদের support team প্রয়োজনে আপনাকে সাহায্য করবে।"
         else:
-            answer = "I am not fully confident about this answer. A human support agent will assist you shortly."
+            answer = "I received your request. Our support team will help you shortly if needed."
+    elif not sources:
+        if locale.lower().startswith("bn"):
+            answer = "জি, আমি আপনার প্রশ্নটি পেয়েছি। আমাদের support team প্রয়োজনে আপনাকে সাহায্য করবে।"
+        else:
+            answer = "Yes, I received your question. Our support team can help further if needed."
 
     return AIRespondResponse(
         answer=answer,
@@ -56,6 +68,10 @@ def respond(payload: AIRespondRequest) -> AIRespondResponse:
         intent=intent,
         sentiment=sentiment,
         should_escalate=should_escalate,
+        vendor_id=vendor_hint,
+        order_id=order_hint,
+        product_id=product_hint,
+        ticket_assignment_type=assignment_type,
         sources=sources,
         model_name=getattr(providers.llm, "model_name", "mock"),
     )

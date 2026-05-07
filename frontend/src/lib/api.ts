@@ -26,6 +26,15 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
   const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   if (!res.ok) {
     const text = await res.text();
+    try {
+      const parsed = JSON.parse(text);
+      const detail = parsed?.detail || parsed?.message;
+      if (typeof detail === "string" && detail.trim()) {
+        throw new Error(detail);
+      }
+    } catch {
+      // Fall back to raw text below.
+    }
     throw new Error(text || `API error ${res.status}`);
   }
   const contentType = res.headers.get("content-type") || "";

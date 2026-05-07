@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.http import JsonResponse
@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.businesses.models import Business
+from apps.businesses.access import get_user_business
 from .models import Invoice, PricingPlan, Subscription, UsageRecord
 
 
@@ -18,6 +19,13 @@ def health(request):
 def _month_key() -> str:
     now = timezone.now()
     return f"{now.year:04d}-{now.month:02d}"
+
+
+def _get_business_for_user(user):
+    business = get_user_business(user)
+    if business:
+        return business
+    return Business.objects.filter(owner=user).first()
 
 
 @api_view(['GET', 'POST'])
@@ -33,6 +41,12 @@ def pricing_plans(request):
                     'monthly_price': str(p.monthly_price),
                     'message_limit': p.message_limit,
                     'seat_limit': p.seat_limit,
+                    'vendor_limit': p.vendor_limit,
+                    'product_limit_per_vendor': p.product_limit_per_vendor,
+                    'order_limit': p.order_limit,
+                    'agent_limit': p.agent_limit,
+                    'ai_reply_limit': p.ai_reply_limit,
+                    'channels_allowed': p.channels_allowed,
                     'features': p.features,
                 }
                 for p in plans
@@ -56,7 +70,7 @@ def pricing_plans(request):
 
 @api_view(['GET', 'POST', 'PATCH'])
 def subscription(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = _get_business_for_user(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -103,7 +117,7 @@ def subscription(request):
 
 @api_view(['GET', 'POST'])
 def usage(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = _get_business_for_user(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -136,9 +150,43 @@ def usage(request):
     )
 
 
+@api_view(['GET'])
+def current(request):
+    business = _get_business_for_user(request.user)
+    if not business:
+        return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    sub = Subscription.objects.filter(business=business).select_related('plan').first()
+    month = _month_key()
+    metric = 'messages'
+    record = UsageRecord.objects.filter(business=business, metric=metric, period_type='monthly', period_key=month).first()
+    quantity = record.quantity if record else 0
+    limit = sub.plan.message_limit if sub else None
+    return Response(
+        {
+            'subscription': (
+                {
+                    'id': sub.id,
+                    'status': sub.status,
+                    'plan': {'id': sub.plan_id, 'code': sub.plan.code, 'name': sub.plan.name},
+                }
+                if sub
+                else None
+            ),
+            'usage': {
+                'metric': metric,
+                'month': month,
+                'quantity': quantity,
+                'limit': limit,
+                'remaining': (limit - quantity) if isinstance(limit, int) else None,
+                'is_exceeded': bool(isinstance(limit, int) and quantity > limit),
+            },
+        }
+    )
+
+
 @api_view(['GET', 'POST', 'PATCH'])
 def invoices(request):
-    business = Business.objects.filter(owner=request.user).first()
+    business = _get_business_for_user(request.user)
     if not business:
         return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -190,3 +238,68 @@ def invoices(request):
         inv.due_date = datetime.strptime(val, '%Y-%m-%d').date() if val else None
     inv.save()
     return Response({'id': inv.id, 'status': inv.status, 'paid_at': inv.paid_at})
+
+
+@api_view(['POST'])
+def sandbox_checkout(request):
+    business = _get_business_for_user(request.user)
+    if not business:
+        return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    plan_id = request.data.get('plan_id')
+    payment_method = str(request.data.get('payment_method', 'sandbox_card')).strip() or 'sandbox_card'
+    plan = PricingPlan.objects.filter(id=plan_id, is_active=True).first()
+    if not plan:
+        return Response({'detail': 'valid plan_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    now = timezone.now()
+    current_period_end = now + timedelta(days=30)
+    sub, _ = Subscription.objects.update_or_create(
+        business=business,
+        defaults={
+            'plan': plan,
+            'status': 'active',
+            'current_period_end': current_period_end,
+            'cancel_at_period_end': False,
+        },
+    )
+
+    unique_ts = int(now.timestamp() * 1000)
+    tx_ref = f"SBX-{business.id}-{unique_ts}"
+    inv = Invoice.objects.create(
+        business=business,
+        subscription=sub,
+        amount=plan.monthly_price,
+        currency='BDT',
+        status='paid',
+        invoice_number=f"INV-SBX-{business.id}-{unique_ts}",
+        issued_at=now,
+        paid_at=now,
+        metadata={
+            'sandbox': True,
+            'payment_method': payment_method,
+            'transaction_reference': tx_ref,
+            'plan_code': plan.code,
+        },
+    )
+
+    return Response(
+        {
+            'detail': 'sandbox payment successful',
+            'transaction_reference': tx_ref,
+            'subscription': {
+                'id': sub.id,
+                'status': sub.status,
+                'current_period_end': sub.current_period_end,
+                'plan': {'id': plan.id, 'code': plan.code, 'name': plan.name},
+            },
+            'invoice': {
+                'id': inv.id,
+                'invoice_number': inv.invoice_number,
+                'amount': str(inv.amount),
+                'currency': inv.currency,
+                'status': inv.status,
+            },
+        },
+        status=201,
+    )

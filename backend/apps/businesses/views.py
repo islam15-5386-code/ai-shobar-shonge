@@ -64,6 +64,35 @@ def _extract_logo_data(uploaded_file) -> dict:
     return data
 
 
+def _ensure_business_for_user(user) -> Business:
+    business = Business.objects.filter(owner=user).first()
+    if business:
+        return business
+
+    # Bootstrap a minimal business so onboarding logo upload works
+    # before step-1 form is submitted.
+    base_slug = f"business-{user.id}"
+    slug = base_slug
+    i = 2
+    while Business.objects.filter(slug=slug).exists():
+        slug = f"{base_slug}-{i}"
+        i += 1
+
+    return Business.objects.create(
+        owner=user,
+        name=f"Business {user.id}",
+        slug=slug,
+        website="",
+        welcome_message="Hello! How can I help you today?",
+        handover_enabled=True,
+        category="shop",
+        support_email="",
+        support_phone="",
+        business_hours="",
+        address="",
+    )
+
+
 @api_view(['GET', 'POST', 'PATCH'])
 def business_setup(request):
     business = Business.objects.filter(owner=request.user).first()
@@ -104,9 +133,7 @@ def business_setup(request):
 
 @api_view(['POST'])
 def upload_logo(request):
-    business = Business.objects.filter(owner=request.user).first()
-    if not business:
-        return Response({'detail': 'business setup required'}, status=status.HTTP_400_BAD_REQUEST)
+    business = _ensure_business_for_user(request.user)
 
     logo = request.FILES.get('logo')
     if not logo:

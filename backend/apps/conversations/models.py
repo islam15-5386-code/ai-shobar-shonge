@@ -10,6 +10,9 @@ class Conversation(models.Model):
         ('closed', 'Closed'),
     )
     business = models.ForeignKey('businesses.Business', on_delete=models.CASCADE, related_name='conversations')
+    vendor = models.ForeignKey('marketplace.Vendor', on_delete=models.SET_NULL, null=True, blank=True, related_name='conversations')
+    order = models.ForeignKey('marketplace.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='conversations')
+    product = models.ForeignKey('products.Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='conversations')
     visitor_id = models.CharField(max_length=128)
     needs_human = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
@@ -29,6 +32,9 @@ class Message(models.Model):
     )
 
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    vendor = models.ForeignKey('marketplace.Vendor', on_delete=models.SET_NULL, null=True, blank=True, related_name='messages')
+    order = models.ForeignKey('marketplace.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='messages')
+    product = models.ForeignKey('products.Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='messages')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     text = models.TextField()
     intent = models.CharField(max_length=80, blank=True)

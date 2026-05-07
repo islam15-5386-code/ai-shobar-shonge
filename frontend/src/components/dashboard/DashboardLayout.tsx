@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, MessagesSquare, Ticket, BookOpen, Package, Plug, Settings, History, CreditCard, Bell, Search, Bot, Sparkles } from "lucide-react";
+import { LayoutDashboard, MessagesSquare, Ticket, BookOpen, Package, Plug, Settings, History, CreditCard, Bell, Search, Bot, Sparkles, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,13 @@ const nav = [
   { to: "/dashboard/integrations", label: "Integrations", icon: Plug },
   { to: "/dashboard/ai-settings", label: "AI Settings", icon: Bot },
   { to: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { to: "/dashboard/users", label: "Users", icon: Users },
+  { to: "/dashboard/vendors", label: "Vendors", icon: Plug },
+  { to: "/dashboard/orders", label: "Mkt Orders", icon: Package },
+  { to: "/dashboard/commissions", label: "Commissions", icon: CreditCard },
+  { to: "/dashboard/payouts", label: "Payouts", icon: CreditCard },
+  { to: "/dashboard/categories", label: "Categories", icon: BookOpen },
+  { to: "/dashboard/marketplace-settings", label: "Mkt Settings", icon: Settings },
 ];
 
 export const DashboardLayout = () => {

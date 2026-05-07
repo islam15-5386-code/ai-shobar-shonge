@@ -1,8 +1,9 @@
 from django.urls import path
 
-from .views import ai_suggested_reply, assign_agent, conversation_history, inbox, internal_notes
+from .views import ai_suggested_reply, assign_agent, conversation_history, conversation_list, inbox, internal_notes
 
 urlpatterns = [
+    path('', conversation_list, name='conversation-list'),
     path('history/', conversation_history, name='conversation-history'),
     path('inbox/', inbox, name='conversation-inbox'),
     path('<int:conversation_id>/assign/', assign_agent, name='conversation-assign-agent'),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from apps.businesses.models import Business
 from apps.tenants.models import TeamMember
+from apps.marketplace.models import VendorStaff
 
 
 def get_user_business(user) -> Business | None:
@@ -11,7 +12,14 @@ def get_user_business(user) -> Business | None:
     if owned:
         return owned
     membership = TeamMember.objects.filter(user=user, is_active=True).select_related('business').first()
-    return membership.business if membership else None
+    if membership:
+        return membership.business
+    vendor_membership = (
+        VendorStaff.objects.filter(user=user, is_active=True, vendor__is_active=True)
+        .select_related('vendor__business')
+        .first()
+    )
+    return vendor_membership.vendor.business if vendor_membership else None
 
 
 def get_user_role_for_business(user, business: Business | None) -> str | None:
