@@ -8,6 +8,8 @@ from django.conf import settings
 from django.db import connection
 
 from apps.faqs.models import FAQ
+from apps.marketplace.models import Order, Vendor
+from apps.products.models import Product
 
 EMBED_DIM = 64
 BANGLA_CHAR_RE = re.compile(r"[\u0980-\u09FF]")
@@ -18,6 +20,15 @@ class FAQMatch:
     faq: FAQ | None
     score: float
     method: str
+
+
+@dataclass
+class KnowledgeContext:
+    faq_match: FAQMatch
+    snippets: list[str]
+    vendor_id: int | None
+    order_id: int | None
+    product_id: int | None
 
 
 def _normalize(text: str) -> str:
@@ -141,6 +152,38 @@ def find_best_faq(query: str, business_id: int) -> FAQMatch:
             return _search_with_python(query_vec, faqs)
 
     return _search_with_python(query_vec, faqs)
+
+
+def build_knowledge_context(query: str, business_id: int) -> KnowledgeContext:
+    faq_match = find_best_faq(query, business_id)
+    snippets: list[str] = []
+
+    q = _normalize(query)
+    tokens = [t for t in _tokens(q) if len(t) >= 3]
+    token = tokens[0] if tokens else q[:20]
+
+    product = Product.objects.filter(business_id=business_id, is_active=True, name__icontains=token).first() if token else None
+    if product:
+        snippets.append(f"Product: {product.name} | Price: {product.price} {product.currency} | Stock: {product.stock_status}")
+
+    vendor = Vendor.objects.filter(business_id=business_id, is_active=True, name__icontains=token).first() if token else None
+    if vendor:
+        snippets.append(f"Vendor: {vendor.name} | Status: {vendor.status} | Support: {vendor.support_email or vendor.support_phone or 'N/A'}")
+
+    order = Order.objects.filter(business_id=business_id, order_number__icontains=token).first() if token else None
+    if order:
+        snippets.append(f"Order {order.order_number}: status={order.status}, payment={order.payment_status}, total={order.total} {order.currency}")
+
+    if faq_match.faq:
+        snippets.insert(0, f"FAQ: {faq_match.faq.question} -> {faq_match.faq.answer}")
+
+    return KnowledgeContext(
+        faq_match=faq_match,
+        snippets=snippets[:6],
+        vendor_id=vendor.id if vendor else None,
+        order_id=order.id if order else None,
+        product_id=product.id if product else None,
+    )
 
 
 def confidence_from_similarity(similarity: float) -> float:
