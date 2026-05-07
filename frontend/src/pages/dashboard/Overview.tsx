@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,12 +15,48 @@ const kpis = [
 ];
 
 export default function Overview() {
+  const navigate = useNavigate();
+
+  const handleExport = () => {
+    const rows = [
+      ["Metric", "Value"],
+      ["Total Conversations", String(stats.totalConversations)],
+      ["Open Tickets", String(stats.openTickets)],
+      ["AI Resolved", String(stats.aiResolved)],
+      ["Human Handover", String(stats.humanHandover)],
+      ["Average Response Time", String(stats.avgResponseTime)],
+      ["Resolution Rate", `${stats.resolutionRate}%`],
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `supportbond-overview-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  };
+
+  const handleNewConversation = () => {
+    navigate("/dashboard/inbox");
+  };
+
   return (
     <div className="p-4 md:p-8">
       <PageHeader
         title="Dashboard"
         subtitle="Welcome, Rashed! Here's how your support is performing today."
-        actions={<><Button variant="outline" size="sm"><Download className="w-4 h-4 mr-1" /> Export</Button><Button size="sm" className="gradient-primary border-0">+ New Conversation</Button></>}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="w-4 h-4 mr-1" /> Export
+            </Button>
+            <Button size="sm" className="gradient-primary border-0" onClick={handleNewConversation}>
+              + New Conversation
+            </Button>
+          </>
+        }
       />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

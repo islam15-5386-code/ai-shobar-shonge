@@ -76,3 +76,92 @@ export const messages = [
   { from: "ai", text: "জ্বি লাল, নীল, সবুজ এবং কালো রঙে available আছে। অর্ডার করতে চান?", time: "10:25 AM" },
   { from: "customer", text: "হ্যাঁ, ডেলিভারি চার্জ কত?", time: "10:26 AM" },
 ];
+
+export type OrderTrackingStage = "confirmed" | "packed" | "shipped" | "out_for_delivery" | "delivered" | "cancelled";
+
+export const customerOrderHistory: Record<
+  string,
+  Array<{
+    orderId: string;
+    amountBdt: number;
+    status: OrderTrackingStage;
+    eta: string;
+    updatedAt: string;
+    items: string;
+    courier: string;
+    trackingCode: string;
+  }>
+> = {
+  "1": [
+    {
+      orderId: "4521",
+      amountBdt: 3200,
+      status: "out_for_delivery",
+      eta: "Today, 6:30 PM",
+      updatedAt: "1h ago",
+      items: "Cotton Saree - Premium x1",
+      courier: "Pathao",
+      trackingCode: "PTH-4521-BD",
+    },
+    {
+      orderId: "4310",
+      amountBdt: 1850,
+      status: "delivered",
+      eta: "Delivered",
+      updatedAt: "2 days ago",
+      items: "Punjabi - Eid Special x1",
+      courier: "RedX",
+      trackingCode: "RDX-4310-BD",
+    },
+  ],
+  "2": [
+    {
+      orderId: "4630",
+      amountBdt: 2450,
+      status: "shipped",
+      eta: "Tomorrow",
+      updatedAt: "30m ago",
+      items: "Three-Piece Set x1",
+      courier: "eCourier",
+      trackingCode: "ECR-4630-BD",
+    },
+  ],
+  "3": [
+    {
+      orderId: "4611",
+      amountBdt: 950,
+      status: "confirmed",
+      eta: "Processing",
+      updatedAt: "10m ago",
+      items: "Kids T-shirt Pack x1",
+      courier: "SteadFast",
+      trackingCode: "SFD-4611-BD",
+    },
+  ],
+  "4": [
+    {
+      orderId: "4508",
+      amountBdt: 4200,
+      status: "packed",
+      eta: "Tomorrow, afternoon",
+      updatedAt: "45m ago",
+      items: "Cotton Saree - Premium x2",
+      courier: "Pathao",
+      trackingCode: "PTH-4508-BD",
+    },
+  ],
+  "5": [
+    {
+      orderId: "4402",
+      amountBdt: 1250,
+      status: "delivered",
+      eta: "Delivered",
+      updatedAt: "1 week ago",
+      items: "Hijab Collection x2",
+      courier: "RedX",
+      trackingCode: "RDX-4402-BD",
+    },
+  ],
+  "6": [],
+  "7": [],
+};

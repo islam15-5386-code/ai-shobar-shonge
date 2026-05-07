@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import math
 import re
 from dataclasses import dataclass
@@ -10,7 +10,7 @@ from django.db import connection
 from apps.faqs.models import FAQ
 
 EMBED_DIM = 64
-BANGLA_CHAR_RE = re.compile(r"[ঀ-৿]")
+BANGLA_CHAR_RE = re.compile(r"[\u0980-\u09FF]")
 
 
 @dataclass
@@ -104,23 +104,30 @@ def _search_with_python(query_vec: list[float], faqs) -> FAQMatch:
 
 
 def _search_with_postgres(query_vec: list[float], business_id: int) -> FAQMatch:
-    # pgvector-style SQL path for Postgres deployments; falls back if it fails.
+    # pgvector path for Postgres deployments; falls back if the cast/operator is unavailable.
+    # Note: json/jsonb cannot be cast directly to vector in pgvector. We cast via text.
     vec_sql = "[" + ",".join(f"{x:.8f}" for x in query_vec) + "]"
     sql = """
-    SELECT id
+    SELECT id, 1 - ((embedding_vector::text)::vector <=> (%s)::vector) AS score
     FROM faqs_faq
-    WHERE business_id = %s AND is_active = TRUE AND embedding_vector IS NOT NULL
+    WHERE business_id = %s
+      AND is_active = TRUE
+      AND embedding_vector IS NOT NULL
+    ORDER BY (embedding_vector::text)::vector <=> (%s)::vector ASC
+    LIMIT 1
     """
-    # Stays intentionally simple to keep SQLite compatibility in dev.
     with connection.cursor() as cur:
-        cur.execute(sql, [business_id])
-        ids = [row[0] for row in cur.fetchall()]
+        cur.execute(sql, [vec_sql, business_id, vec_sql])
+        row = cur.fetchone()
 
-    if not ids:
+    if not row:
         return FAQMatch(faq=None, score=0.0, method="postgres-empty")
 
-    faqs = FAQ.objects.filter(id__in=ids)
-    return _search_with_python(query_vec, faqs)
+    faq_id, score = row
+    faq = FAQ.objects.filter(id=faq_id).first()
+    if faq is None:
+        return FAQMatch(faq=None, score=0.0, method="postgres-empty")
+    return FAQMatch(faq=faq, score=max(0.0, min(1.0, float(score))), method="pgvector")
 
 
 def find_best_faq(query: str, business_id: int) -> FAQMatch:
@@ -150,6 +157,30 @@ def should_escalate(confidence: float, sentiment: str, intent: str) -> tuple[boo
     return False, "none"
 
 
+def should_escalate_with_settings(
+    confidence: float,
+    sentiment: str,
+    intent: str,
+    user_text: str,
+    settings_obj=None,
+) -> tuple[bool, str]:
+    text = (user_text or "").lower()
+
+    if settings_obj is None:
+        return should_escalate(confidence, sentiment, intent)
+
+    human_keywords = ["human", "agent", "support", "refund", "cancel", "urgent", "মানুষ", "এজেন্ট", "রিফান্ড", "ক্যানসেল"]
+
+    if settings_obj.rule_customer_requests_human and any(k in text for k in human_keywords):
+        return True, "customer_requested_human"
+    if settings_obj.rule_refund and intent == "refund":
+        return True, "refund_intent"
+    if settings_obj.rule_negative_sentiment and sentiment == "negative":
+        return True, "negative_sentiment"
+    if settings_obj.rule_below_confidence and confidence < float(settings_obj.confidence_threshold):
+        return True, "below_confidence_threshold"
+    return False, "none"
+
+
 def to_bangla_reply(text: str) -> str:
-    # Lightweight Bangla-friendly rewrite for MVP.
-    return f"???????? {text}"
+    return f"আপনার প্রশ্নের জন্য ধন্যবাদ। {text}"

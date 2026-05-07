@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-secret-key-change-me')
@@ -15,8 +16,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_filters',
+    'channels',
     'corsheaders',
     'apps.accounts',
+    'apps.members',
     'apps.tenants',
     'apps.businesses',
     'apps.faqs',
@@ -25,9 +29,11 @@ INSTALLED_APPS = [
     'apps.conversations',
     'apps.tickets',
     'apps.integrations',
+    'apps.marketplace',
     'apps.billing',
     'apps.analytics',
     'apps.ai_gateway',
+    'apps.core',
 ]
 
 MIDDLEWARE = [
@@ -60,13 +66,42 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
-
-DATABASES = {
+CHANNEL_LAYERS = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
     }
 }
+
+db_url = os.getenv('DATABASE_URL', '').strip()
+if db_url:
+    parsed = urlparse(db_url)
+    if parsed.scheme.startswith('sqlite'):
+        db_name = parsed.path.lstrip('/') or 'db.sqlite3'
+        DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': str(BASE_DIR / db_name)}}
+    elif parsed.scheme in {'postgres', 'postgresql'}:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': parsed.path.lstrip('/'),
+                'USER': parsed.username or '',
+                'PASSWORD': parsed.password or '',
+                'HOST': parsed.hostname or '',
+                'PORT': str(parsed.port or ''),
+            }
+        }
+    else:
+        DATABASES = {'default': {'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'), 'NAME': os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3'))}}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
+            'NAME': os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3')),
+            'USER': os.getenv('DB_USER', ''),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', ''),
+            'PORT': os.getenv('DB_PORT', ''),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -82,21 +117,39 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', '1') == '1'
+CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if x.strip()]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': int(os.getenv('DRF_PAGE_SIZE', '20')),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
 
 USE_PGVECTOR_SEARCH = os.getenv('USE_PGVECTOR_SEARCH', '1') == '1'
+AI_SERVICE_URL = os.getenv('AI_SERVICE_URL', 'http://ai-service:8000')
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'SupportBond AI API',
+    'DESCRIPTION': 'API documentation for SupportBond AI SaaS backend',
+    'VERSION': '1.0.0',
+}
